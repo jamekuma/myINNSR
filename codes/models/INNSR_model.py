@@ -129,21 +129,22 @@ class INNSRModel(BaseModel):
         self.optimizer.zero_grad()
 
         # 可逆网络的正向loss
-        # print(self.real_H.shape)
-        self.forw_out = self.INN(self.real_H) # 正向推理
-        # print(self.forw_out.shape)
-        l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out)
+        with torch.no_grad():
+            # print(self.real_H.shape)
+            self.forw_out = self.INN(self.real_H) # 正向推理
+            # print(self.forw_out.shape)
+            l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out)
 
-        zshape = self.forw_out[:, 3:, :, :].shape
-        LR_ref = self.ref_L.detach()
+            zshape = self.forw_out[:, 3:, :, :].shape
+            LR_ref = self.ref_L.detach()
 
 
-        # 可逆网络的逆向loss
-        LR = self.Quantization(self.forw_out[:, :3, :, :])
-        # gaussian_scale = self.train_opt['gaussian_scale'] if self.train_opt['gaussian_scale'] != None else 1
-        y_ = torch.cat((LR, self.gaussian_batch(zshape)), dim=1)
-        back_out = self.INN(y_, rev=True)  # 逆向推理
-        l_back_rec = self.INN_loss_backward(back_out)
+            # 可逆网络的逆向loss
+            LR = self.Quantization(self.forw_out[:, :3, :, :])
+            # gaussian_scale = self.train_opt['gaussian_scale'] if self.train_opt['gaussian_scale'] != None else 1
+            y_ = torch.cat((LR, self.gaussian_batch(zshape)), dim=1)
+            back_out = self.INN(y_, rev=True)  # 逆向推理
+            l_back_rec = self.INN_loss_backward(back_out)
 
         # GapNN的loss
         # print(self.ref_L.shape)
