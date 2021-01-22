@@ -114,6 +114,7 @@ for epoch in range(start_epoch, total_epochs + 1):
         if current_step % opt['train']['val_freq'] == 0:
             avg_psnr_SR = 0.0
             avg_psnr_LR = 0.0
+            avg_psnr_SR_cmp = 0.0
             cnt = 0
             for val_data in val_loader:
                 cnt += 1
@@ -122,6 +123,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 crop_size = opt['scale']
                 visuals = model.get_current_visuals()
                 sr_img = util.tensor2img(visuals['SR'])  # uint8
+                sr_img_cmp = util.tensor2img(visuals['SR_cmp'])
                 gt_img = util.tensor2img(visuals['GT'])  # uint8
                 lr_forw_img = util.tensor2img(visuals['LR_forw'])
                 lr_gap_img = util.tensor2img(visuals['LR_gap'])
@@ -129,25 +131,32 @@ for epoch in range(start_epoch, total_epochs + 1):
 
                 gt_img = gt_img / 255.
                 sr_img = sr_img / 255.
+                sr_img_cmp = sr_img_cmp / 255.
                 lr_forw_img = lr_forw_img / 255.
                 lr_gap_img = lr_gap_img / 255.
+                
 
                 cropped_sr_img = sr_img[crop_size:-crop_size, crop_size:-crop_size, :]
                 cropped_gt_img = gt_img[crop_size:-crop_size, crop_size:-crop_size, :]
+                cropped_sr_img_cmp = sr_img_cmp[crop_size:-crop_size, crop_size:-crop_size, :]
                 cropped_lr_forw_img = lr_forw_img[1:-1, 1:-1, :]
                 cropped_lr_gap_img = lr_gap_img[1:-1, 1:-1, :]
                 
+                avg_psnr_SR_cmp += util.calculate_psnr(cropped_sr_img_cmp * 255, cropped_gt_img * 255)
                 avg_psnr_SR += util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)
                 avg_psnr_LR += util.calculate_psnr(cropped_lr_forw_img * 255, cropped_lr_gap_img * 255)
+
+            avg_psnr_SR_cmp = avg_psnr_SR_cmp / cnt
             avg_psnr_SR = avg_psnr_SR / cnt
             avg_psnr_LR = avg_psnr_LR / cnt
             # log
-            logger.info('# Validation # PSNR_SR: {:.4e}  PSNR_LR_Gap: {:.4e}.'.format(avg_psnr_SR, avg_psnr_LR))
+            logger.info('# Validation # PSNR_SR: {:.4e} PSNR_SR_cmp: {:.4e} PSNR_LR_Gap: {:.4e}.'.format(avg_psnr_SR, avg_psnr_SR_cmp, avg_psnr_LR))
             logger_val = logging.getLogger('val')  # validation logger
-            logger_val.info('<epoch:{:3d}, iter:{:8,d}> psnr_sr: {:.4e}   psnr_lr_gap: {:.4e}.'.format(epoch, current_step, avg_psnr_SR, avg_psnr_LR))
+            logger_val.info('<epoch:{:3d}, iter:{:8,d}> psnr_sr: {:.4e}  psnr_sr_cmp: {:.4e}  psnr_lr_gap: {:.4e}.'.format(epoch, current_step, avg_psnr_SR, avg_psnr_SR_cmp, avg_psnr_LR))
             # tensorboard logger
             if opt['use_tb_logger']:
                 tb_logger.add_scalar('psnr_sr', avg_psnr_SR, current_step)
+                tb_logger.add_scalar('psnr_sr_cmp', avg_psnr_SR_cmp, current_step)
                 tb_logger.add_scalar('psnr_lr_gap', avg_psnr_LR, current_step)
         
         # 保存模型及训练数据
