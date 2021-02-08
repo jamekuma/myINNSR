@@ -191,13 +191,8 @@ class INNSRModel(BaseModel):
             self.forw_L = self.Quantization(self.forw_L)
             # 改成使用实际LR逆向推理
             self.Gap_L = self.GapNN(self.ref_L)
-            y_forw = torch.cat((self.forw_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)  # 正向推理得到的y
-            y_gap = torch.cat((self.Gap_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)   # 由真实LR经过GapNN得到的y
-            y_forw_cmp = torch.cat((self.ref_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)  # 真实LR
-            
-            self.fake_H = self.INN(y_gap, rev=True)[:, :3, :, :]
-            self.cmp_H = self.INN(y_forw_cmp, rev=True)[:, :3, :, :]
-            self.rescale_H = self.INN(y_forw, rev=True)[:, :3, :, :]
+            y_forw = torch.cat((self.Gap_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
+            self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
 
         self.INN.train()
         self.GapNN.train()
@@ -233,8 +228,6 @@ class INNSRModel(BaseModel):
         out_dict = OrderedDict()
         out_dict['LR_ref'] = self.ref_L.detach()[0].float().cpu()
         out_dict['SR'] = self.fake_H.detach()[0].float().cpu()
-        out_dict['SR_cmp'] = self.cmp_H.detach()[0].float().cpu()
-        out_dict['SR_rescale'] = self.rescale_H.detach()[0].float().cpu()
         out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
         out_dict['LR_gap'] = self.Gap_L.detach()[0].float().cpu()
         out_dict['GT'] = self.real_H.detach()[0].float().cpu()
