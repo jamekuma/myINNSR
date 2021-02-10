@@ -44,7 +44,10 @@ class INNSRModel(BaseModel):
         self.Quantization = Quantization()
 
         if self.is_train:
-            self.INN.train()
+            if not INN_network_opt['fixed']:
+                self.INN.train()
+            if not Gap_network_opt['fixed']:
+                self.GapNN.train()
 
             # loss
             if train_opt['pixel_criterion_forw'] == 'l1':
@@ -135,22 +138,22 @@ class INNSRModel(BaseModel):
     def optimize_parameters(self, step):
         self.optimizer.zero_grad()
 
-        # 可逆网络的正向loss
+        ########## 原始训练可逆网络的正向loss
         # with torch.no_grad():
         self.forw_out = self.INN(self.real_H) # 正向推理
         l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out)
 
         zshape = self.forw_out[:, 3:, :, :].shape
-        LR_ref = self.ref_L.detach()
 
-        # 可逆网络的逆向loss
-        LR = self.Quantization(self.forw_out[:, :3, :, :])
+        ######### 原始训练可逆网络的逆向loss
+        LR = self.forw_out[:, :3, :, :]
+        # LR = self.Quantization(LR)
         # gaussian_scale = self.train_opt['gaussian_scale'] if self.train_opt['gaussian_scale'] != None else 1
         y_ = torch.cat((LR, self.gaussian_batch(zshape)), dim=1)
         back_out = self.INN(y_, rev=True)  # 逆向推理
         l_back_rec = self.INN_loss_backward(back_out)
 
-        # GapNN的loss
+        ######### GapNN的loss
         # print(self.ref_L.shape)
         GapNN_out = self.GapNN(self.ref_L)
         l_gap = self.GapNN_loss(self.forw_out, GapNN_out)  # 在LR域的Gap
@@ -199,8 +202,12 @@ class INNSRModel(BaseModel):
             y_forw = torch.cat((self.Gap_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
             self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
 
-        self.INN.train()
-        self.GapNN.train()
+        INN_network_opt = self.opt['network']['INN']
+        Gap_network_opt = self.opt['network']['GapNN']
+        if not INN_network_opt['fixed']:
+            self.INN.train()
+        if not Gap_network_opt['fixed']:
+            self.GapNN.train()
 
     # def downscale(self, HR_img):
     #     self.netG.eval()
