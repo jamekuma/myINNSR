@@ -153,14 +153,14 @@ class INNSRModel(BaseModel):
         # GapNN的loss
         # print(self.ref_L.shape)
         GapNN_out = self.GapNN(self.ref_L)
-        l_gap = self.GapNN_loss(self.forw_out, GapNN_out)
+        l_gap = self.GapNN_loss(self.forw_out, GapNN_out)  # 在LR域的Gap
+        l_HR = self.Reconstruction_Gap(self.real_H, self.INN(torch.cat((GapNN_out, self.gaussian_batch(zshape)), dim=1), rev=True))  # 在HR域的 L(实际HR图像, INN(GapNN(实际LR图像), rev=True))
 
         # total loss
         loss = 0
-        # if not self.INN_network_opt['fixed']:
-        #     loss += l_forw_fit + l_back_rec + l_forw_ce
-        # if not self.Gap_network_opt['fixed']:
-        loss += l_gap
+        # loss += l_forw_fit + l_back_rec + l_forw_ce
+        # loss += l_gap
+        loss += l_HR
         loss.backward()
 
         # gradient clipping
@@ -175,6 +175,7 @@ class INNSRModel(BaseModel):
         self.log_dict['l_forw_ce'] = l_forw_ce.item()
         self.log_dict['l_back_rec'] = l_back_rec.item()
         self.log_dict['l_gap'] = l_gap.item()
+        self.log_dict['l_HR'] = l_HR.item()
 
     def test(self):
         Lshape = self.ref_L.shape
