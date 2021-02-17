@@ -169,7 +169,7 @@ class INNSRModel(BaseModel):
         # gradient clipping
         if self.train_opt['gradient_clipping']:
             nn.utils.clip_grad_norm_(self.INN.parameters(), self.train_opt['gradient_clipping'])
-            # nn.utils.clip_grad_norm_(self.GapNN.parameters(), self.train_opt['gradient_clipping'])
+            nn.utils.clip_grad_norm_(self.GapNN.parameters(), self.train_opt['gradient_clipping'])
 
         self.optimizer.step()
 
