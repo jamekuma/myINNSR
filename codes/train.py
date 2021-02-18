@@ -70,6 +70,8 @@ if opt['model_name'] == 'INNSR_model_1':
     from models.INNSR_model_1 import INNSRModel as M
 elif opt['model_name'] == 'INNSR_model_2':
     from models.INNSR_model_2 import INNSRModel as M
+elif opt['model_name'] == 'INNSR_model_0':
+    from models.INNSR_model_0 import INNSRModel as M
 else:
     raise NotImplementedError('Model [{:s}] is not defined.'.format(opt['model_name']))
 model = M(opt)
