@@ -66,8 +66,13 @@ for phase, dataset_opt in opt['datasets'].items():
     else:
         raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
 # 模型
-from models.INNSR_model import INNSRModel
-model = INNSRModel(opt)
+if opt['model_name'] == 'INNSR_model_1':
+    from models.INNSR_model_1 import INNSRModel as M
+elif opt['model_name'] == 'INNSR_model_2':
+    from models.INNSR_model_2 import INNSRModel as M
+else:
+    raise NotImplementedError('Model [{:s}] is not defined.'.format(opt['model_name']))
+model = M(opt)
 
 
 # 从指定目录中加载训练状态（用于恢复上次的训练）

@@ -19,6 +19,9 @@ from models.modules.subnet import subnet
 logger = logging.getLogger('base')
 
 class INNSRModel(BaseModel):
+    '''
+    使用IRN论文预训练好的INN模型作为基础
+    '''
     def __init__(self, opt):
         super(INNSRModel, self).__init__(opt)
 
