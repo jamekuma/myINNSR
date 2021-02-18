@@ -15,6 +15,7 @@ from torch.distributions.laplace import Laplace
 from models.modules.INN import InvRescaleNet
 from models.modules.RCAN import RCAN
 from models.modules.subnet import subnet
+from models.modules.loss import ReconstructionLoss
 # m = Laplace(torch.tensor([0.0]), torch.tensor([1.0]))
 logger = logging.getLogger('base')
 
@@ -53,23 +54,10 @@ class INNSRModel(BaseModel):
                 self.GapNN.train()
 
             # loss
-            if train_opt['pixel_criterion_forw'] == 'l1':
-                self.Reconstruction_forw = L1Loss()
-            elif train_opt['pixel_criterion_forw'] == 'l2':
-                self.Reconstruction_forw = MSELoss()
-
-            if train_opt['pixel_criterion_back'] == 'l1':
-                self.Reconstruction_back = L1Loss()
-            elif train_opt['pixel_criterion_back'] == 'l2':
-                self.Reconstruction_back = MSELoss()
-
-            if train_opt['pixel_criterion_Gap'] == 'l1':
-                self.Reconstruction_Gap = L1Loss()
-            elif train_opt['pixel_criterion_Gap'] == 'l2':
-                self.Reconstruction_Gap = MSELoss()
+            self.Reconstruction_forw = ReconstructionLoss(train_opt['pixel_criterion_forw'])
+            self.Reconstruction_back = ReconstructionLoss(train_opt['pixel_criterion_back'])
+            self.Reconstruction_Gap = ReconstructionLoss(train_opt['pixel_criterion_Gap'])
  
-
-
             # optimizers
             wd_INN = train_opt['weight_decay_INN'] if train_opt['weight_decay_INN'] else 0
             wd_GapNN = train_opt['weight_decay_GapNN'] if train_opt['weight_decay_GapNN'] else 0
