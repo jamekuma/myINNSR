@@ -122,7 +122,7 @@ class INNSRModel(BaseModel):
     def INN_loss_forward(self, forw_out, ref_L):
         out_y = forw_out[:, :3, :, :]
         out_z = forw_out[:, 3:, :, :]
-        l_forw_fit = self.train_opt['lambda_fit_forw'] * self.Reconstruction_forw(out_y, ref_L)
+        l_forw_fit = self.train_opt['lambda_fit_forw'] * self.Reconstruction_forw(out_y, ref_L.detach())
 
         
         out_z = out_z.reshape([forw_out.shape[0], -1])
