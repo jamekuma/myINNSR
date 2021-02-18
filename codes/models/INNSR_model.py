@@ -87,12 +87,14 @@ class INNSRModel(BaseModel):
             
             # if not Gap_network_opt['fixed']:
             for k, v in self.GapNN.named_parameters():
-                torch.nn.init.normal_(v, mean=0, std=0.001)
                 if v.requires_grad:
                     optim_params.append(v)
                 # else:
                 #     logger.warning('Params [{:s}] will not optimize.'.format(k))
             
+            for m in self.GapNN.modules():
+                if isinstance(m, (nn.Conv2d, nn.Linear)):
+                    nn.init.xavier_uniform_(m.weight)
             # print(train_opt['beta1'], train_opt['beta2'])
             self.optimizer = torch.optim.Adam(optim_params, lr=train_opt['lr'],
                                                 weight_decay=wd_INN,
