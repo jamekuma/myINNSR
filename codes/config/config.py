@@ -18,7 +18,8 @@ def parse(path, is_train=True):
     
     # 维护路径信息
     for k, v in opt['path'].items():
-        opt['path'][k] = osp.expanduser(v)
+        if v:
+            opt['path'][k] = osp.expanduser(v)
     root_path = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir)) # 项目的根目录
     opt['path']['root'] = root_path
     if is_train:
