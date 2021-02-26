@@ -3,7 +3,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
-
+from collections import Counter
 
 class BaseModel():
     def __init__(self, opt):
@@ -115,5 +115,12 @@ class BaseModel():
         assert len(resume_schedulers) == len(self.schedulers), 'Wrong lengths of schedulers'
         for i, o in enumerate(resume_optimizers):
             self.optimizers[i].load_state_dict(o)
+            # print(o)
         for i, s in enumerate(resume_schedulers):
+            new_milestone = self.schedulers[i].milestones
             self.schedulers[i].load_state_dict(s)
+            # print(s)
+            old_milestone = self.schedulers[i].milestones
+            if not new_milestone == old_milestone:
+                self.schedulers[i].milestones = new_milestone
+                print('\033[1;33;44m Apply the new milestone to the scheduler {:d} \033[0m'.format(i))

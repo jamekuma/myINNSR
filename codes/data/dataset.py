@@ -22,8 +22,8 @@ class LQGTDataset(data.Dataset):
         # self.LQ_env, self.GT_env = None, None  
 
         # 从目录下获取所有图像的路径
-        self.paths_GT = util.get_image_paths(opt['dataroot_GT']) 
-        self.paths_LQ = util.get_image_paths(opt['dataroot_LQ'])
+        self.paths_GT = util.get_image_paths(opt['dataroot_GT']) if opt['dataroot_GT'] else None
+        self.paths_LQ = util.get_image_paths(opt['dataroot_LQ']) if opt['dataroot_LQ'] else None
         assert self.paths_GT, 'Error: GT path is empty.'
         if self.paths_LQ and self.paths_GT:
             assert len(self.paths_LQ) == len(

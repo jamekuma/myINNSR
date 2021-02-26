@@ -9,13 +9,10 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from data.dataset import LQGTDataset
 import math
+import os.path as osp
 
 
-seed = random.randint(1, 10000)
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
+
 
 # 加载配置文件
 parser = argparse.ArgumentParser()
@@ -29,8 +26,9 @@ opt = config.parse(args.opt, is_train=True)
 
 
 # 建立目录、日志
-util.mkdir_and_rename(opt['path']['experiments_root'])
-util.mkdirs((path for key, path in opt['path'].items() if not key == 'experiments_root'
+if not opt['path'].get('resume_state', None):  # 如果是恢复训练，则不重命名目录
+    util.mkdir_and_rename(opt['path']['experiments_root'])
+    util.mkdirs((path for key, path in opt['path'].items() if not key == 'experiments_root'
                          and 'pretrain' not in key and 'resume' not in key))
 util.setup_logger('base', opt['path']['log'], 'train_' + opt['name'], level=logging.INFO,
                     screen=True, tofile=True)
@@ -39,6 +37,14 @@ util.setup_logger('val', opt['path']['log'], 'val_' + opt['name'], level=logging
 logger = logging.getLogger('base')
 logger.info(config.dict2str(opt))  # 记录配置
 tb_logger = SummaryWriter(log_dir='../tb_logger/' + opt['name'])
+
+# 随机数种子
+seed = random.randint(1, 10000)
+logger.info('Random seed: {}'.format(seed))
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
 
 opt = config.dict_to_nonedict(opt)  # 把配置变为NoneDict, 即不存在的键值为None
 torch.backends.cudnn.benchmark = True
@@ -65,6 +71,33 @@ for phase, dataset_opt in opt['datasets'].items():
         logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
     else:
         raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
+
+
+
+# 从指定目录中加载训练状态（用于恢复上次的训练）
+if opt['path'].get('resume_state', None):
+    device_id = torch.cuda.current_device()
+    resume_state = torch.load(opt['path']['resume_state'],
+                              map_location=lambda storage, loc: storage.cuda(device_id))
+    resume_iter = resume_state['iter']
+    # option.check_resume(opt, resume_state['iter'])  # check resume options
+    if opt['path'].get('pretrain_INN', None) is not None or opt['path'].get(
+                'pretrain_GapNN', None) is not None:
+        logger.warning('pretrain_model path will be ignored when resuming training.')
+
+    opt['path']['pretrain_INN'] = osp.join(opt['path']['models'], '{}_INN.pth'.format(resume_iter))
+    opt['path']['pretrain_GapNN'] = osp.join(opt['path']['models'], '{}_GapNN.pth'.format(resume_iter))
+    logger.info('Set [pretrain_INN] to ' + opt['path']['pretrain_INN'])
+    logger.info('Set [pretrain_GapNN] to ' + opt['path']['pretrain_GapNN'])
+
+    logger.info('Resuming training from epoch: {}, iter: {}.'.format(
+        resume_state['epoch'], resume_state['iter']))
+    start_epoch = resume_state['epoch']
+    current_step = resume_state['iter']
+else:
+    current_step = 0
+    start_epoch = 0
+
 # 模型
 if opt['model_name'] == 'INNSR_model_1':
     from models.INNSR_model_1 import INNSRModel as M
@@ -76,21 +109,8 @@ else:
     raise NotImplementedError('Model [{:s}] is not defined.'.format(opt['model_name']))
 model = M(opt)
 
-
-# 从指定目录中加载训练状态（用于恢复上次的训练）
 if opt['path'].get('resume_state', None):
-    device_id = torch.cuda.current_device()
-    resume_state = torch.load(opt['path']['resume_state'],
-                              map_location=lambda storage, loc: storage.cuda(device_id))
-    # option.check_resume(opt, resume_state['iter'])  # check resume options
-    logger.info('Resuming training from epoch: {}, iter: {}.'.format(
-        resume_state['epoch'], resume_state['iter']))
-    start_epoch = resume_state['epoch']
-    current_step = resume_state['iter']
     model.resume_training(resume_state)  # handle optimizers and schedulers
-else:
-    current_step = 0
-    start_epoch = 0
 
 #### 开始训练
 logger.info('Start training from epoch: {:d}, iter: {:d}'.format(start_epoch, current_step))
@@ -143,6 +163,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 cropped_lr_gap_img = lr_gap_img[1:-1, 1:-1, :]
                 
                 avg_psnr_SR += util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)
+                # print('PSNR_SR: {:.4e}'.format(util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)))
                 avg_psnr_LR += util.calculate_psnr(cropped_lr_forw_img * 255, cropped_lr_gap_img * 255)
             avg_psnr_SR = avg_psnr_SR / cnt
             avg_psnr_LR = avg_psnr_LR / cnt

@@ -17,10 +17,9 @@ def parse(path, is_train=True):
     
     # 维护路径信息
     opt['is_train'] = is_train
+    root_path = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir)) # 项目的根目录
+    opt['path']['root'] = root_path
     if is_train:
-        root_path = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir)) # 项目的根目录
-        # opt['path'] = dict()
-        opt['path']['root'] = root_path
         experiments_root = osp.join(root_path, 'experiments', opt['name']) # 本次训练过程的记录目录
         opt['path']['experiments_root'] = experiments_root 
         opt['path']['models'] = osp.join(experiments_root, 'models')  # 中间模型的保存目录
@@ -35,6 +34,7 @@ def parse(path, is_train=True):
     for phase, dataset in opt['datasets'].items():
         phase = phase.split('_')[0]
         dataset['phase'] = phase
+        dataset['scale'] = opt['scale']
     
     return opt
 

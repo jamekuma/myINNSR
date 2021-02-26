@@ -110,7 +110,7 @@ class INNSRModel(BaseModel):
     def INN_loss_forward(self, forw_out, ref_L):
         out_y = forw_out[:, :3, :, :]
         out_z = forw_out[:, 3:, :, :]
-        l_forw_fit = self.train_opt['lambda_fit_forw'] * self.Reconstruction_forw(out_y, ref_L.detach())
+        l_forw_fit = self.train_opt['lambda_fit_forw'] * self.Reconstruction_forw(out_y, ref_L)
 
         
         out_z = out_z.reshape([forw_out.shape[0], -1])
@@ -129,6 +129,12 @@ class INNSRModel(BaseModel):
 
 
     def optimize_parameters(self, step):
+        INN_network_opt = self.opt['network']['INN']
+        Gap_network_opt = self.opt['network']['GapNN']
+        if not INN_network_opt['fixed']:
+            self.INN.train()
+        if not Gap_network_opt['fixed']:
+            self.GapNN.train()
         self.optimizer.zero_grad()
 
         ########## 正向loss
@@ -150,6 +156,7 @@ class INNSRModel(BaseModel):
         loss += l_forw_fit + l_back_rec + l_forw_ce
         # loss += l_gap
         # loss += l_HR
+        # print('l_back_rec: {:.4e}'.format(l_back_rec))
         loss.backward()
 
         # gradient clipping
@@ -184,7 +191,10 @@ class INNSRModel(BaseModel):
             self.forw_L = self.Quantization(self.forw_L)
             self.Gap_L = self.GapNN(self.ref_L)
             y_forw = torch.cat((self.Gap_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
-            self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
+            self.fake_H = self.INN(x=y_forw, rev=True)
+            # Reconstruction_back = ReconstructionLoss('l1')
+            # l_back_rec = 10 * Reconstruction_back(self.real_H, self.fake_H)
+            # logger.info('l_back_rec: {:.4e}'.format(l_back_rec))
 
         INN_network_opt = self.opt['network']['INN']
         Gap_network_opt = self.opt['network']['GapNN']
@@ -247,15 +257,25 @@ class INNSRModel(BaseModel):
         load_path_INN = self.opt['path']['pretrain_INN']
         if load_path_INN is not None:
             logger.info('Loading model for INN [{:s}] ...'.format(load_path_INN))
-            self.load_network(load_path_INN, self.INN, self.opt['path']['strict_load'])
+            if isinstance(self.INN, nn.DataParallel) or isinstance(self.INN, DistributedDataParallel):
+                self.load_network(load_path_INN, self.INN.module, self.opt['path']['strict_load'])
+            else:
+                self.load_network(load_path_INN, self.INN, self.opt['path']['strict_load'])
 
         load_path_GapNN = self.opt['path']['pretrain_GapNN']
         if load_path_GapNN is not None:
             logger.info('Loading model for GapNN [{:s}] ...'.format(load_path_GapNN))
-            self.load_network(load_path_GapNN, self.GapNN, self.opt['path']['strict_load'])
+            if isinstance(self.GapNN, nn.DataParallel) or isinstance(self.GapNN, DistributedDataParallel):
+                self.load_network(load_path_GapNN, self.GapNN.module, self.opt['path']['strict_load'])
+            else:
+                self.load_network(load_path_GapNN, self.GapNN, self.opt['path']['strict_load'])
 
     def save(self, iter_label):
         if not self.INN_network_opt['fixed']:
             self.save_network(self.INN, 'INN', iter_label)
         if not self.Gap_network_opt['fixed']:
             self.save_network(self.GapNN, 'GapNN', iter_label)
+
+    # def resume_training(self, resume_state):
+    #     super().resume_training(resume_state)
+    #     self.optimizer = self.optimizers[0]
