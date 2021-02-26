@@ -9,14 +9,16 @@ def parse(path, is_train=True):
     '''
     with open(path, mode='r') as f:
         opt = yaml.safe_load(f)
-        
+
+    opt['is_train'] = is_train
     # 在哪些gpu上运行
     gpu_list = ','.join(str(x) for x in opt['gpu_ids'])
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
     print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
     
     # 维护路径信息
-    opt['is_train'] = is_train
+    for k, v in opt['path'].items():
+        opt['path'][k] = osp.expanduser(v)
     root_path = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir)) # 项目的根目录
     opt['path']['root'] = root_path
     if is_train:
@@ -35,6 +37,8 @@ def parse(path, is_train=True):
         phase = phase.split('_')[0]
         dataset['phase'] = phase
         dataset['scale'] = opt['scale']
+        dataset['dataroot_GT'] = osp.expanduser(dataset['dataroot_GT'])
+        dataset['dataroot_LQ'] = osp.expanduser(dataset['dataroot_LQ'])
     
     return opt
 
