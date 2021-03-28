@@ -39,7 +39,8 @@ def parse(path, is_train=True):
         dataset['phase'] = phase
         dataset['scale'] = opt['scale']
         dataset['dataroot_GT'] = osp.expanduser(dataset['dataroot_GT'])
-        dataset['dataroot_LQ'] = osp.expanduser(dataset['dataroot_LQ'])
+        if 'dataroot_LQ' in dataset.keys():
+            dataset['dataroot_LQ'] = osp.expanduser(dataset['dataroot_LQ'])
     
     return opt
 

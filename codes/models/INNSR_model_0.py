@@ -35,7 +35,7 @@ class INNSRModel(BaseModel):
         self.INN_network_opt = INN_network_opt
         self.INN = InvRescaleNet(
             channel_in=INN_network_opt['in_nc'], channel_out=INN_network_opt['out_nc'],
-             subnet_constructor=subnet('DBNet'), block_num=INN_network_opt['block_num']).to(self.device)
+             subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num']).to(self.device)
         self.INN = DataParallel(self.INN)
         
         # print network
