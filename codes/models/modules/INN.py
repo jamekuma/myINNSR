@@ -46,24 +46,24 @@ class HaarDownsampling(nn.Module):
     '''
     哈尔小波变换
     '''
-    def __init__(self, channel_in):
+    def __init__(self, channel_in, trainable=False):
         super(HaarDownsampling, self).__init__()
         self.channel_in = channel_in
 
         self.haar_weights = torch.ones(4, 1, 2, 2)
 
-        self.haar_weights[1, 0, 0, 1] = -1
-        self.haar_weights[1, 0, 1, 1] = -1
+        self.haar_weights[1, 0, 0, 1] = -1  #  1 -1
+        self.haar_weights[1, 0, 1, 1] = -1  #  1 -1
 
-        self.haar_weights[2, 0, 1, 0] = -1
-        self.haar_weights[2, 0, 1, 1] = -1
+        self.haar_weights[2, 0, 1, 0] = -1  #  1  1
+        self.haar_weights[2, 0, 1, 1] = -1  # -1 -1
 
-        self.haar_weights[3, 0, 1, 0] = -1
-        self.haar_weights[3, 0, 0, 1] = -1
+        self.haar_weights[3, 0, 1, 0] = -1  #  1 -1
+        self.haar_weights[3, 0, 0, 1] = -1  # -1  1
 
         self.haar_weights = torch.cat([self.haar_weights] * self.channel_in, 0)
         self.haar_weights = nn.Parameter(self.haar_weights)
-        self.haar_weights.requires_grad = False
+        self.haar_weights.requires_grad = trainable
 
     def forward(self, x, rev=False):
         if not rev:
@@ -92,7 +92,7 @@ class InvRescaleNet(nn.Module):
     '''
     整个可逆网络结构
     '''
-    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2):
+    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2, downscale_trainable=False):
         '''
         subnet_constructor: 学习函数的构造器, 参数为(输入通道数, 输出通道数)
         down_num: 下采样的次数, 即down_num = log(scale)
@@ -103,7 +103,7 @@ class InvRescaleNet(nn.Module):
 
         current_channel = channel_in
         for i in range(down_num):
-            b = HaarDownsampling(current_channel)
+            b = HaarDownsampling(current_channel, downscale_trainable)
             operations.append(b)
             current_channel *= 4
             for j in range(block_num[i]):
