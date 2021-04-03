@@ -49,28 +49,30 @@ class HaarDownsampling(nn.Module):
     def __init__(self, channel_in, trainable=False):
         super(HaarDownsampling, self).__init__()
         self.channel_in = channel_in
+        
+        self.a = torch.ones(1).cuda()
+        self.b = torch.ones(1).cuda()
+        self.c = torch.ones(1).cuda()
+        self.d = -torch.ones(1).cuda()
+        self.a = nn.Parameter(self.a)
+        self.b = nn.Parameter(self.b)
+        self.c = nn.Parameter(self.c)
+        self.d = nn.Parameter(self.d)
+        self.a.requires_grad = trainable
+        self.b.requires_grad = trainable
+        self.c.requires_grad = trainable
+        self.d.requires_grad = trainable
 
-        self.haar_weights = torch.ones(4, 1, 2, 2)
-
-        self.haar_weights[1, 0, 0, 1] = -1  #  1 -1
-        self.haar_weights[1, 0, 1, 1] = -1  #  1 -1
-
-        self.haar_weights[2, 0, 1, 0] = -1  #  1  1
-        self.haar_weights[2, 0, 1, 1] = -1  # -1 -1
-
-        self.haar_weights[3, 0, 1, 0] = -1  #  1 -1
-        self.haar_weights[3, 0, 0, 1] = -1  # -1  1
-
-        self.haar_weights = torch.cat([self.haar_weights] * self.channel_in, 0)
-        self.haar_weights = nn.Parameter(self.haar_weights)
-        self.haar_weights.requires_grad = trainable
+        # haar_weights = nn.Parameter(haar_weights)
+        # haar_weights.requires_grad = trainable
 
     def forward(self, x, rev=False):
+        haar_weights = self.get_weight(rev)
         if not rev:
             self.elements = x.shape[1] * x.shape[2] * x.shape[3]
             self.last_jac = self.elements / 4 * np.log(1/16.)
 
-            out = F.conv2d(x, self.haar_weights, bias=None, stride=2, groups=self.channel_in) / 4.0
+            out = F.conv2d(x, haar_weights, bias=None, stride=2, groups=self.channel_in) / ((self.a * self.d - self.b * self.c) ** 2)
             out = out.reshape([x.shape[0], self.channel_in, 4, x.shape[2] // 2, x.shape[3] // 2])
             out = torch.transpose(out, 1, 2)
             out = out.reshape([x.shape[0], self.channel_in * 4, x.shape[2] // 2, x.shape[3] // 2])
@@ -82,11 +84,40 @@ class HaarDownsampling(nn.Module):
             out = x.reshape([x.shape[0], 4, self.channel_in, x.shape[2], x.shape[3]])
             out = torch.transpose(out, 1, 2)
             out = out.reshape([x.shape[0], self.channel_in * 4, x.shape[2], x.shape[3]])
-            return F.conv_transpose2d(out, self.haar_weights, bias=None, stride=2, groups = self.channel_in)
+            out = F.pixel_shuffle(out, 2)
+            out = F.conv2d(out, haar_weights, bias=None, stride=2, groups=self.channel_in)
+            out = F.pixel_shuffle(out, 2)
+            return out
 
     def jacobian(self, x, rev=False):
         return self.last_jac
 
+    def get_weight(self, rev=False):
+        haar_weights = torch.ones(4 * self.channel_in, 1, 2, 2).cuda()
+        for i in range(self.channel_in):
+            haar_weights[4 * i, 0, 0, 0] = self.a ** 2 if not rev else self.d ** 2
+            haar_weights[4 * i, 0, 0, 1] = self.a * self.b if not rev else -self.d * self.b
+            haar_weights[4 * i, 0, 1, 0] = self.a * self.b if not rev else -self.d * self.b   #  1  1
+            haar_weights[4 * i, 0, 1, 1] = self.b ** 2 if not rev else self.b ** 2            #  1  1
+
+
+            haar_weights[4 * i + 1, 0, 0, 0] = self.a * self.c if not rev else  -self.d * self.c
+            haar_weights[4 * i + 1, 0, 0, 1] = self.a * self.d if not rev else self.a * self.d
+            haar_weights[4 * i + 1, 0, 1, 0] = self.b * self.c if not rev else self.c * self.b  #  1 -1
+            haar_weights[4 * i + 1, 0, 1, 1] = self.b * self.d if not rev else -self.a * self.b #  1 -1
+
+            haar_weights[4 * i + 2, 0, 0, 0] = self.a * self.c if not rev else -self.d * self.c
+            haar_weights[4 * i + 2, 0, 0, 1] = self.b * self.c if not rev else self.c * self.b
+            haar_weights[4 * i + 2, 0, 1, 0] = self.a * self.d if not rev else self.a * self.d      #  1  1
+            haar_weights[4 * i + 2, 0, 1, 1] = self.b * self.d if not rev else -self.a * self.b     # -1 -1
+
+            haar_weights[4 * i + 3, 0, 0, 0] = self.c ** 2 if not rev else self.c ** 2
+            haar_weights[4 * i + 3, 0, 0, 1] = self.c * self.d if not rev else -self.a * self.c
+            haar_weights[4 * i + 3, 0, 1, 0] = self.c * self.d if not rev else -self.a * self.c  #  1 -1
+            haar_weights[4 * i + 3, 0, 1, 1] = self.d ** 2 if not rev else self.a ** 2           # -1  1
+        # print(haar_weights)
+        # haar_weights = torch.cat([haar_weights] * self.channel_in, 0)
+        return haar_weights
 
 class InvRescaleNet(nn.Module):
     '''
