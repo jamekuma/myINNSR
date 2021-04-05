@@ -2,7 +2,7 @@ import math
 import torch
 # import numpy as np
 
-# matlab 'imresize' function, now only support 'bicubic'
+# 模仿matlab中的imresize函数中的bicubic退化实现
 def cubic(x):
     absx = torch.abs(x)
     absx2 = absx**2
@@ -12,7 +12,11 @@ def cubic(x):
             (absx > 1) * (absx <= 2)).type_as(absx))
 
 
+
 def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width, antialiasing):
+    '''
+    计算
+    '''
     if (scale < 1) and (antialiasing):
         # Use a modified kernel to simultaneously interpolate and antialias- larger kernel width
         kernel_width = kernel_width / scale

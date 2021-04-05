@@ -70,22 +70,15 @@ for test_loader in test_loaders:
         model.test()
         visuals = model.get_current_visuals()
 
+        lr_img = util.tensor2img(visuals['LR_ref'])
         sr_img = util.tensor2img(visuals['SR'])  # uint8
         srgt_img = util.tensor2img(visuals['GT'])  # uint8
 
-        # save images
-        suffix = opt['suffix']
-        if suffix:
-            save_img_path = osp.join(dataset_dir, img_name + suffix + '.png')
-        else:
-            save_img_path = osp.join(dataset_dir, img_name + '.png')
-        util.save_img(sr_img, save_img_path)
-
-        if suffix:
-            save_img_path = osp.join(dataset_dir, img_name + suffix + '_GT.png')
-        else:
-            save_img_path = osp.join(dataset_dir, img_name + '_GT.png')
-        util.save_img(srgt_img, save_img_path)
+        
+        util.save_img(lr_img, osp.join(dataset_dir, img_name + '_LR.png'))
+        util.save_img(sr_img, osp.join(dataset_dir, img_name + '_SR.png'))
+        util.save_img(srgt_img, osp.join(dataset_dir, img_name + '_GT.png'))
+        
 
         # calculate PSNR and SSIM
         gt_img = util.tensor2img(visuals['GT'])
