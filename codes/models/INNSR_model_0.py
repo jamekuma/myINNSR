@@ -1,6 +1,6 @@
 import logging
 from collections import OrderedDict
-
+import math
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel, DistributedDataParallel
@@ -36,7 +36,7 @@ class INNSRModel(BaseModel):
         self.INN = InvRescaleNet(
             channel_in=INN_network_opt['in_nc'], channel_out=INN_network_opt['out_nc'],
              subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num'],
-             downscale_trainable=INN_network_opt['downscale_trainable']).to(self.device)
+             downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
         self.INN = DataParallel(self.INN)
         
         # print network
