@@ -126,7 +126,9 @@ def channel_convert(in_c, tar_type, img_list):
         return img_list
 
 def modcrop(img_in, scale):
-    # img_in: Numpy, HWC or HW
+    """
+    把图像按照缩放倍率进行裁剪
+    """    # 
     img = np.copy(img_in)
     if img.ndim == 2:
         H, W = img.shape
@@ -141,7 +143,9 @@ def modcrop(img_in, scale):
     return img
 
 def augment(img_list, hflip=True, rot=True):
-    # horizontal flip OR rotate
+    """
+    数据增广. 水平翻转或者旋转图像
+    """    
     hflip = hflip and random.random() < 0.5
     vflip = rot and random.random() < 0.5
     rot90 = rot and random.random() < 0.5
