@@ -23,7 +23,7 @@ class INNSRModel(BaseModel):
     '''
     重头开始训练, 原始版本，不带GapNN
     '''
-    def __init__(self, opt):
+    def __init__(self, opt, print_network=True):
         super(INNSRModel, self).__init__(opt)
 
         train_opt = opt['train']
@@ -39,8 +39,9 @@ class INNSRModel(BaseModel):
              downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
         self.INN = DataParallel(self.INN)
         
-        # print network
-        self.print_network()
+        # print 
+        if print_network:
+            self.print_network()
         self.load()
         self.Quantization = Quantization()
 
@@ -169,17 +170,26 @@ class INNSRModel(BaseModel):
 
     #     return LR_img
 
-    def upscale(self, LR_img, scale, gaussian_scale=1):
+    def upscale(self, LR_img, scale, gaussian_scale=1, gaussian_samples=None):
         Lshape = LR_img.shape
         zshape = [Lshape[0], Lshape[1] * (scale**2 - 1), Lshape[2], Lshape[3]]
-       
-
+        LR_img = LR_img.to(self.device)
+        HR_imgs = []
         self.INN.eval()
-        with torch.no_grad():
-            y_ = torch.cat((LR_img, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
-            HR_img = self.INN(x=y_, rev=True)[:, :3, :, :]
-        self.INN.train()
-        return HR_img
+        if gaussian_samples:
+            with torch.no_grad():
+                for i in gaussian_samples:
+                    y_ = torch.cat((LR_img, gaussian_scale * i * torch.ones(zshape)), dim=1)
+                    HR_img = self.INN(x=y_, rev=True)[:, :3, :, :]
+                    HR_imgs.append(HR_img)
+            self.INN.train()
+            return HR_imgs
+        else:
+            with torch.no_grad():
+                y_ = torch.cat((LR_img, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
+                HR_img = self.INN(x=y_, rev=True)[:, :3, :, :]
+            self.INN.train()
+            return HR_img
 
     def get_current_log(self):
         return self.log_dict
