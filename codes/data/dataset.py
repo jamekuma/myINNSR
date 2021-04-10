@@ -28,6 +28,19 @@ class LQGTDataset(data.Dataset):
             ), 'GT and LQ datasets have different number of images - {}, {}.'.format(
                 len(self.paths_LQ), len(self.paths_GT))
         # self.random_scale_list = [1]
+        self.imgs_GT = []
+        self.imgs_LQ = []
+        for i in range(len(self.paths_GT)):
+            GT_path = self.paths_GT[i]
+            img_GT = util.read_img(GT_path)
+            self.imgs_GT.append(img_GT)
+            # print(img_GT.shape)
+            if self.paths_LQ:
+                LQ_path = self.paths_LQ[i]
+                img_LQ = util.read_img(LQ_path)
+                self.imgs_LQ.append(img_LQ)
+                # print(img_LQ.shape)
+            # print(i)
 
 
     def __getitem__(self, index):
@@ -37,7 +50,9 @@ class LQGTDataset(data.Dataset):
 
         # get GT image
         GT_path = self.paths_GT[index]
-        img_GT = util.read_img(GT_path)
+        # img_GT_old = util.read_img(GT_path)
+        img_GT = self.imgs_GT[index]
+        # assert img_GT == img_GT_old
         if self.opt['phase'] != 'train':  # 如果是测试集/验证集
             img_GT = util.modcrop(img_GT, scale)
         # change color space if necessary
@@ -47,7 +62,9 @@ class LQGTDataset(data.Dataset):
         
         if self.paths_LQ:
             LQ_path = self.paths_LQ[index]
-            img_LQ = util.read_img(LQ_path)
+            # img_LQ_old = util.read_img(LQ_path)
+            img_LQ = self.imgs_LQ[index]
+            # assert img_LQ == img_LQ_old
         else:  # 如果未指定LR图像，则自动将HR图像进行Bicubic下采样
 
             # randomly scale during training
