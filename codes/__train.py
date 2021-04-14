@@ -41,7 +41,7 @@ util.setup_logger('base', opt['path']['log'], 'train_' + opt['name'], level=logg
                     screen=True, tofile=not args.debug)
 util.setup_logger('val', opt['path']['log'], 'val_' + opt['name'], level=logging.INFO,
                     screen=True, tofile=not args.debug)
-util.setup_logger('val', opt['path']['log'], 'test_' + opt['name'], level=logging.INFO,
+util.setup_logger('test', opt['path']['log'], 'test_' + opt['name'], level=logging.INFO,
                     screen=True, tofile=not args.debug)
 logger = logging.getLogger('base')
 logger.info(config.dict2str(opt))  # 记录配置
@@ -85,7 +85,7 @@ for phase, dataset_opt in sorted(opt['datasets'].items()):
                                            pin_memory=True)
         # test_loaders.append(test_loader)
         test_loaders[dataset_opt['name']] = test_loader
-        logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(test_set)))
+        logger.info('Number of test images in [{:s}]: {:d}'.format(dataset_opt['name'], len(test_set)))
     else:
         raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
 
@@ -200,6 +200,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 cnt = 0
                 log_msg += name + ': '
                 for test_data in test_loader:
+                    cnt += 1
                     model.feed_data(test_data)
                     model.test()
                     crop_size = opt['scale']
@@ -214,8 +215,8 @@ for epoch in range(start_epoch, total_epochs + 1):
                     sr_img_y = util.bgr2ycbcr(sr_img, only_y=True)
                     gt_img_y = util.bgr2ycbcr(gt_img, only_y=True)
 
-                    cropped_sr_img_y = sr_img_y[crop_size:-crop_size, crop_size:-crop_size, :]
-                    cropped_gt_img_y = gt_img_y[crop_size:-crop_size, crop_size:-crop_size, :]
+                    cropped_sr_img_y = sr_img_y[crop_size:-crop_size, crop_size:-crop_size]
+                    cropped_gt_img_y = gt_img_y[crop_size:-crop_size, crop_size:-crop_size]
                     
                     avg_psnr_y_SR += util.calculate_psnr(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
                     avg_ssim_y_SR += util.calculate_ssim(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
