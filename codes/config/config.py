@@ -12,9 +12,9 @@ def parse(path, is_train=True):
 
     opt['is_train'] = is_train
     # 在哪些gpu上运行
-    gpu_list = ','.join(str(x) for x in opt['gpu_ids'])
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
-    print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
+    # gpu_list = ','.join(str(x) for x in opt['gpu_ids'])
+    # os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
+    # print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
     
     # 维护路径信息
     for k, v in opt['path'].items():

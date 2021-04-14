@@ -21,10 +21,14 @@ parser.add_argument('-opt', type=str, help='Path to option YMAL file.')
 parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
                     help='job launcher')
 parser.add_argument('--debug', help='debug mode, do not make any dict', action="store_true")
+parser.add_argument('-gpu', type=str, help='gpu_id', default='0')
+
 # parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 opt = config.parse(args.opt, is_train=True)
 
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+print('export CUDA_VISIBLE_DEVICES=' + args.gpu)
 
 
 # 建立目录、日志

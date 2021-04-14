@@ -1,0 +1,82 @@
+name: train_INN_x4_CADenseBlock
+
+use_tb_logger: true
+scale: 4
+model_name: INNSR_model_0
+
+# 数据集
+datasets:
+  train:
+    name: DIV2K
+    mode: LQGT
+    scale: 4
+    dataroot_GT: ~/datasets/DIV2K_train_HR 
+    dataroot_LQ: ~/datasets/DIV2K_train_LR_bicubic/X4 
+    n_workers: 6 
+    batch_size: 16
+    GT_size: 144
+    use_crop: true
+    use_flip: true
+    use_rot: true
+    color: RGB
+
+  val:
+    name: val_DIV2K
+    mode: LQGT
+    scale: 4
+    dataroot_GT: ~/datasets/DIV2K_valid_HR
+    dataroot_LQ: ~/datasets/DIV2K_valid_LR_bicubic/X4 
+
+# 网络结构参数
+network: 
+  INN:
+    fixed: false  # 是否固定参数
+    subnet_type: DBNet_CA
+    downscale_trainable: false
+    in_nc: 3
+    out_nc: 3
+    block_num: [8, 8]
+    init: xavier
+
+
+path:
+  # 预训练的模型路径
+  # pretrain_INN: ~/myINNSR/IRN_x4.pth
+  pretrain_INN: ~
+
+
+# 训练参数
+train:
+  lr: !!float 2e-4 # 初始学习率
+  beta1: 0.9
+  beta2: 0.999
+  n_iter: 1500000
+  warmup_iter: -1  # no warm up
+
+  # 学习率
+  lr_scheme: MultiStepLR
+  lr_steps: [100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000, 1100000, 1200000, 1300000, 1400000]
+  lr_gamma: 0.5
+
+  # 
+  pixel_criterion_forw: l2
+  pixel_criterion_back: l1
+  # pixel_criterion_Gap: l2
+
+  manual_seed: 10
+
+  val_freq: !!float 5e3
+
+  # lambda_fit_forw: 4.
+  # lambda_rec_back: 1
+  # lambda_ce_forw: 1
+  lambda_fit_forw: 10
+  lambda_rec_back: 10
+  lambda_ce_forw: 1
+  weight_decay_INN: !!float 1e-5
+  gradient_clipping: 10
+
+# 日志参数
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 5e3

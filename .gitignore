@@ -25,7 +25,7 @@ tb_logger/*
 *.log
 *.out
 *.synctex.gz
-*.yml
+options/test_*.yml
 
 # TODO
 data_samples/samples_byteimg
