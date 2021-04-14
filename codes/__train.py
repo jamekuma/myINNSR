@@ -189,7 +189,7 @@ for epoch in range(start_epoch, total_epochs + 1):
         # test
         if current_step % opt['train']['test_freq'] == 0:
             log_msg = 'Y_channel PSNR/SSIM: '
-            for name, test_loader in test_loaders.item():
+            for name, test_loader in test_loaders.items():
                 avg_psnr_y_SR = 0.0
                 avg_ssim_y_SR = 0.0
                 cnt = 0
