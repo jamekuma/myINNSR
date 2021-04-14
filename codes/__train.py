@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data.dataset import LQGTDataset
 import math
 import os.path as osp
+import os
 
 
 
@@ -26,7 +27,7 @@ parser.add_argument('-gpu', type=str, help='gpu_id', default='0')
 # parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 opt = config.parse(args.opt, is_train=True)
-
+opt['gpu_ids'] = [int(x) for x in args.gpu.split(',')]
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 print('export CUDA_VISIBLE_DEVICES=' + args.gpu)
 

@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import models.modules.utils as utils
-
+from models.modules.RCAN import RCAB
+from models.modules.common import default_conv
 class CALayer(nn.Module):
     def __init__(self, channel, reduction=2):
         super(CALayer, self).__init__()
@@ -50,12 +51,31 @@ class DenseBlock(nn.Module):
 
         return x5
 
+class RCABlock(nn.Module):
+    def __init__(self, channel_in, channel_out, init='xavier', n_feat=64, reduction=32, bias=True):
+        super(RCABlock, self).__init__()
+        self.convs = nn.Sequential(
+            nn.Conv2d(channel_in, n_feat, 3, 1, 1, bias=bias),
+            RCAB(default_conv, n_feat, 3, reduction, act=nn.LeakyReLU(negative_slope=0.2, inplace=True)),
+            nn.Conv2d(n_feat, channel_out, 3, 1, 1, bias=bias),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        )
+        if init == 'xavier':
+            self.apply(utils.init_weights_xavier)
+        else:
+            self.apply(utils.init_weights)
+    def forward(self, x):
+        x = self.convs(x)
+        return x
+
 def subnet(net_structure, init='xavier', CA=False):
     def constructor(channel_in, channel_out):
         if net_structure == 'DBNet':
             return DenseBlock(channel_in, channel_out, init)
         elif net_structure == 'DBNet_CA':
             return DenseBlock(channel_in, channel_out, init, CA=True)
+        elif net_structure == 'RCABlock':
+            return RCABlock(channel_in, channel_out, init)
         else:
             return None
 
