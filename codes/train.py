@@ -60,7 +60,7 @@ for phase, dataset_opt in opt['datasets'].items():
         num_workers = dataset_opt['n_workers'] * len(opt['gpu_ids'])
         train_loader = torch.utils.data.DataLoader(train_set, batch_size=dataset_opt['batch_size'], shuffle=True,
                                            num_workers=num_workers, drop_last=True,
-                                           pin_memory=False)
+                                           pin_memory=True)
 
         logger.info('Number of train images: {:,d}, iters: {:,d}'.format(len(train_set), train_size))
         logger.info('Total epochs needed: {:d} for iters {:,d}'.format(total_epochs, total_iters))

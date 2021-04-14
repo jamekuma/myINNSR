@@ -12,7 +12,7 @@ datasets:
     scale: 4
     dataroot_GT: ~/datasets/DIV2K_train_HR 
     dataroot_LQ: ~/datasets/DIV2K_train_LR_bicubic/X4 
-    n_workers: 6 
+    n_workers: 4 
     batch_size: 16
     GT_size: 144
     use_crop: true
