@@ -3,6 +3,7 @@ import torch
 import config.config as config
 import utils.utils as util
 import logging 
+from collections import OrderedDict
 import random
 import numpy as np
 import torch
@@ -19,6 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-opt', type=str, help='Path to option YMAL file.')
 parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
                     help='job launcher')
+parser.add_argument('--debug', help='debug mode, do not make any dict', action="store_true")
 # parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 opt = config.parse(args.opt, is_train=True)
@@ -26,14 +28,16 @@ opt = config.parse(args.opt, is_train=True)
 
 
 # 建立目录、日志
-if not opt['path'].get('resume_state', None):  # 如果是恢复训练，则不重命名目录
+if not opt['path'].get('resume_state', None) and not args.debug:  # 如果是恢复训练，则不重命名目录
     util.mkdir_and_rename(opt['path']['experiments_root'])
     util.mkdirs((path for key, path in opt['path'].items() if not key == 'experiments_root'
                          and 'pretrain' not in key and 'resume' not in key))
 util.setup_logger('base', opt['path']['log'], 'train_' + opt['name'], level=logging.INFO,
-                    screen=True, tofile=True)
+                    screen=True, tofile=not args.debug)
 util.setup_logger('val', opt['path']['log'], 'val_' + opt['name'], level=logging.INFO,
-                    screen=True, tofile=True)
+                    screen=True, tofile=not args.debug)
+util.setup_logger('val', opt['path']['log'], 'test_' + opt['name'], level=logging.INFO,
+                    screen=True, tofile=not args.debug)
 logger = logging.getLogger('base')
 logger.info(config.dict2str(opt))  # 记录配置
 tb_logger = SummaryWriter(log_dir='../tb_logger/' + opt['name'])
@@ -50,7 +54,8 @@ opt = config.dict_to_nonedict(opt)  # 把配置变为NoneDict, 即不存在的�
 torch.backends.cudnn.benchmark = True
 
 # 数据集
-for phase, dataset_opt in opt['datasets'].items():
+test_loaders = OrderedDict()
+for phase, dataset_opt in sorted(opt['datasets'].items()):
     if phase == 'train':
         train_set = LQGTDataset(dataset_opt)
         train_size = int(math.ceil(len(train_set) / dataset_opt['batch_size']))
@@ -69,6 +74,13 @@ for phase, dataset_opt in opt['datasets'].items():
         val_loader = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=False, num_workers=1,
                                            pin_memory=True)
         logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
+    elif phase.startswith('test'):
+        test_set = LQGTDataset(dataset_opt)
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=False, num_workers=1,
+                                           pin_memory=True)
+        # test_loaders.append(test_loader)
+        test_loaders[dataset_opt['name']] = test_loader
+        logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(test_set)))
     else:
         raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
 
@@ -138,7 +150,6 @@ for epoch in range(start_epoch, total_epochs + 1):
         # validation
         if current_step % opt['train']['val_freq'] == 0:
             avg_psnr_SR = 0.0
-            avg_psnr_LR = 0.0
             cnt = 0
             for val_data in val_loader:
                 cnt += 1
@@ -175,13 +186,39 @@ for epoch in range(start_epoch, total_epochs + 1):
             model.save(current_step)
             model.save_training_state(epoch, current_step)
 
-        # debug
-        # c = 0
-        # for k, v in model.INN.named_parameters():
-        #     if c == 200:
-        #         print(str(v))
-        #         break
-        #     c += 1
+        # test
+        if current_step % opt['train']['test_freq'] == 0:
+            log_msg = 'Y_channel PSNR/SSIM: '
+            for name, test_loader in test_loaders.item():
+                avg_psnr_y_SR = 0.0
+                avg_ssim_y_SR = 0.0
+                cnt = 0
+                log_msg += name + ': '
+                for test_data in test_loader:
+                    model.feed_data(test_data)
+                    model.test()
+                    crop_size = opt['scale']
+                    visuals = model.get_current_visuals()
+
+                    sr_img = util.tensor2img(visuals['SR'])  # uint8
+                    gt_img = util.tensor2img(visuals['GT'])  # uint8
+
+                    gt_img = gt_img / 255.
+                    sr_img = sr_img / 255.
+
+                    sr_img_y = util.bgr2ycbcr(sr_img, only_y=True)
+                    gt_img_y = util.bgr2ycbcr(gt_img, only_y=True)
+
+                    cropped_sr_img_y = sr_img_y[crop_size:-crop_size, crop_size:-crop_size, :]
+                    cropped_gt_img_y = gt_img_y[crop_size:-crop_size, crop_size:-crop_size, :]
+                    
+                    avg_psnr_y_SR += util.calculate_psnr(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
+                    avg_ssim_y_SR += util.calculate_ssim(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
+                avg_psnr_y_SR = avg_psnr_y_SR / cnt
+                avg_ssim_y_SR = avg_ssim_y_SR / cnt
+                log_msg += '{:.6f}db/{:.6f}  '.format(avg_psnr_y_SR, avg_ssim_y_SR)
+            logger_test = logging.getLogger('test')
+            logger_test.info(log_msg)
             
 
         
