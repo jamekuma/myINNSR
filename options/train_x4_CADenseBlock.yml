@@ -45,7 +45,7 @@ datasets:
     name: Urban100
     mode: LQGT
     dataroot_GT: ~/datasets/urban100 # path to test HR images
-    
+
 # 网络结构参数
 network: 
   INN:
@@ -85,6 +85,7 @@ train:
   manual_seed: 10
 
   val_freq: !!float 5e3
+  test_freq: !!float 5e4
 
   # lambda_fit_forw: 4.
   # lambda_rec_back: 1
