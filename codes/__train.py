@@ -193,7 +193,7 @@ for epoch in range(start_epoch, total_epochs + 1):
 
         # test
         if current_step % opt['train']['test_freq'] == 0:
-            log_msg = 'Y_channel PSNR/SSIM: '
+            log_msg = '<epoch:{:3d}, iter:{:8,d}> psnr_sr: {:.4e}. Y_channel PSNR/SSIM: \n'
             for name, test_loader in test_loaders.items():
                 avg_psnr_y_SR = 0.0
                 avg_ssim_y_SR = 0.0
@@ -222,7 +222,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                     avg_ssim_y_SR += util.calculate_ssim(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
                 avg_psnr_y_SR = avg_psnr_y_SR / cnt
                 avg_ssim_y_SR = avg_ssim_y_SR / cnt
-                log_msg += '{:.6f}db/{:.6f}  '.format(avg_psnr_y_SR, avg_ssim_y_SR)
+                log_msg += '{:.6f}db/{:.6f} \n'.format(avg_psnr_y_SR, avg_ssim_y_SR)
             logger_test = logging.getLogger('test')
             logger_test.info(log_msg)
             
