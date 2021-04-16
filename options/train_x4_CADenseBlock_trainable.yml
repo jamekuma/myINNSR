@@ -1,4 +1,4 @@
-name: train_INN_x4_CADenseBlock
+name: train_INN_x4_CADenseBlock_trainable
 
 use_tb_logger: true
 scale: 4
