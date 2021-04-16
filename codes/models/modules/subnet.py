@@ -52,21 +52,24 @@ class DenseBlock(nn.Module):
         return x5
 
 class RCABlock(nn.Module):
-    def __init__(self, channel_in, channel_out, init='xavier', n_feat=64, reduction=32, bias=True):
+    def __init__(self, channel_in, channel_out, init='xavier', n_feat=64, reduction=16, n_resblocks=2, bias=True):
         super(RCABlock, self).__init__()
-        self.convs = nn.Sequential(
-            nn.Conv2d(channel_in, n_feat, 3, 1, 1, bias=bias),
-            RCAB(default_conv, n_feat, 3, reduction, act=nn.LeakyReLU(negative_slope=0.2, inplace=True)),
-            nn.Conv2d(n_feat, channel_out, 3, 1, 1, bias=bias),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-        )
+        
+        self.in_conv = nn.Conv2d(channel_in, n_feat, 3, 1, 1, bias=bias)
+        modules_body = [RCAB(default_conv, n_feat, 3, reduction, act=nn.LeakyReLU(negative_slope=0.2, inplace=True))
+            for _ in range(n_resblocks)]
+        self.rcabs = nn.Sequential(*modules_body)
+        self.out_conv = nn.Conv2d(n_feat, channel_out, 3, 1, 1, bias=bias)
         if init == 'xavier':
             self.apply(utils.init_weights_xavier)
         else:
             self.apply(utils.init_weights)
     def forward(self, x):
-        x = self.convs(x)
-        return x
+        x = self.in_conv(x)
+        res = self.rcabs(x)
+        res += x
+        res = self.out_conv(res)
+        return res
 
 def subnet(net_structure, init='xavier', CA=False):
     def constructor(channel_in, channel_out):
