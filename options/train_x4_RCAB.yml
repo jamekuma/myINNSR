@@ -1,4 +1,4 @@
-name: train_INN_x4_RCAB
+name: INN_x4_RCAB
 
 use_tb_logger: true
 scale: 4

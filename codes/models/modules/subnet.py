@@ -5,7 +5,7 @@ import models.modules.utils as utils
 from models.modules.RCAN import RCAB
 from models.modules.common import default_conv
 class CALayer(nn.Module):
-    def __init__(self, channel, reduction=2):
+    def __init__(self, channel, reduction):
         super(CALayer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.conv_du = nn.Sequential(
@@ -21,7 +21,7 @@ class CALayer(nn.Module):
         return x * y
 
 class DenseBlock(nn.Module):
-    def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True, CA=False):
+    def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True):
         super(DenseBlock, self).__init__()
         self.conv1 = nn.Conv2d(channel_in, gc, 3, 1, 1, bias=bias)
         self.conv2 = nn.Conv2d(channel_in + gc, gc, 3, 1, 1, bias=bias)
@@ -29,10 +29,6 @@ class DenseBlock(nn.Module):
         self.conv4 = nn.Conv2d(channel_in + 3 * gc, gc, 3, 1, 1, bias=bias)
         self.conv5 = nn.Conv2d(channel_in + 4 * gc, channel_out, 3, 1, 1, bias=bias)
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        
-        self.CA = CA
-        if CA:
-            self.CA_layer = CALayer(channel_out)
 
         if init == 'xavier':
             utils.initialize_weights_xavier([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
@@ -46,9 +42,66 @@ class DenseBlock(nn.Module):
         x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
         x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
         x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
-        if self.CA:
-            x5 = self.CA_layer(x5)
+        return x5
 
+class DenseBlock_CA_1(nn.Module):
+    '''
+    通道注意力模块，放最后一层
+    '''
+    def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True):
+        super(DenseBlock_CA_1, self).__init__()
+        self.conv1 = nn.Conv2d(channel_in, gc, 3, 1, 1, bias=bias)
+        self.conv2 = nn.Conv2d(channel_in + gc, gc, 3, 1, 1, bias=bias)
+        self.conv3 = nn.Conv2d(channel_in + 2 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv4 = nn.Conv2d(channel_in + 3 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv5 = nn.Conv2d(channel_in + 4 * gc, channel_out, 3, 1, 1, bias=bias)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+        self.CA_layer = CALayer(channel_out, reduction=2)
+
+        if init == 'xavier':
+            utils.initialize_weights_xavier([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
+        else:
+            utils.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
+        utils.initialize_weights(self.conv5, 0)
+
+    def forward(self, x):
+        x1 = self.lrelu(self.conv1(x))
+        x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
+        x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
+        x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
+        x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
+        x5 = self.CA_layer(x5)
+        return x5
+
+class DenseBlock_CA_2(nn.Module):
+    '''
+    通道注意力模块，放在中间通道数比较多的层
+    '''
+    def __init__(self, channel_in, channel_out, init='xavier', gc=32, bias=True):
+        super(DenseBlock_CA_2, self).__init__()
+        self.conv1 = nn.Conv2d(channel_in, gc, 3, 1, 1, bias=bias)
+        self.conv2 = nn.Conv2d(channel_in + gc, gc, 3, 1, 1, bias=bias)
+        self.conv3 = nn.Conv2d(channel_in + 2 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv4 = nn.Conv2d(channel_in + 3 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv5 = nn.Conv2d(channel_in + 4 * gc, channel_out, 3, 1, 1, bias=bias)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+        self.CA_layer = CALayer(channel_in + 4 * gc, reduction=32)
+
+        if init == 'xavier':
+            utils.initialize_weights_xavier([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
+        else:
+            utils.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
+        utils.initialize_weights(self.conv5, 0)
+
+    def forward(self, x):
+        x1 = self.lrelu(self.conv1(x))
+        x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
+        x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
+        x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
+        x_ca = self.CA_layer(torch.cat((x, x1, x2, x3, x4), 1))
+        x5 = self.conv5(x_ca)
         return x5
 
 class RCABlock(nn.Module):
@@ -75,8 +128,10 @@ def subnet(net_structure, init='xavier', CA=False):
     def constructor(channel_in, channel_out):
         if net_structure == 'DBNet':
             return DenseBlock(channel_in, channel_out, init)
-        elif net_structure == 'DBNet_CA':
-            return DenseBlock(channel_in, channel_out, init, CA=True)
+        elif net_structure == 'DBNet_CA_1':
+            return DenseBlock_CA_1(channel_in, channel_out, init)
+        elif net_structure == 'DBNet_CA_2':
+            return DenseBlock_CA_2(channel_in, channel_out, init)
         elif net_structure == 'RCABlock':
             return RCABlock(channel_in, channel_out, init)
         else:

@@ -1,4 +1,4 @@
-name: train_INN_x4_trainable_Haar
+name: INN_x4_trainable_Haar
 
 use_tb_logger: true
 scale: 4

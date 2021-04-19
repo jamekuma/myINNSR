@@ -163,3 +163,43 @@ class InvRescaleNet(nn.Module):
         else:
             return out
 
+
+class InvSRNet(nn.Module):
+    '''
+    '''
+    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2, downscale_trainable=False):
+        super(InvSRNet, self).__init__()
+        self.down_num = down_num
+        current_channel = channel_in
+        self.upscale_blocks = nn.ModuleList()
+        self.downscale_blocks = nn.ModuleList()
+        self.inv_blocks = nn.ModuleList()
+        for i in range(down_num):
+            self.downscale_blocks.append(nn.Conv2d(current_channel, current_channel * 4, 3, stride=2, padding=1))
+            operations = []
+            for j in range(block_num[i]):
+                operations.append(InvBlockExp(subnet_constructor, current_channel * 4, channel_out))
+            self.inv_blocks.append(nn.ModuleList(operations))
+            self.upscale_blocks.append(
+                    nn.Sequential(
+                        nn.PixelShuffle(2),
+                    )
+                )
+            current_channel *= 4
+        self.end_forward_conv = nn.Conv2d(current_channel, channel_out, 3, stride=1, padding=1)
+        self.end_backward_conv = nn.Conv2d(channel_out, current_channel, 3, stride=1, padding=1)
+    def forward(self, x, rev=False):
+        out = x
+        if not rev:
+            for i in range(self.down_num):
+                out = self.downscale_blocks[i](out)
+                for inv in self.inv_blocks[i]:
+                    out = inv(out)
+            out = self.end_forward_conv(out)
+        else:
+            out = self.end_backward_conv(out)
+            for i in reversed(range(self.down_num)):
+                for inv in reversed(self.inv_blocks[i]):
+                    out = inv(out, rev=True)
+                out = self.upscale_blocks[i](out)
+        return out

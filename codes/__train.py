@@ -22,6 +22,7 @@ parser.add_argument('-opt', type=str, help='Path to option YMAL file.')
 parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
                     help='job launcher')
 parser.add_argument('--debug', help='debug mode, do not make any dict', action="store_true")
+parser.add_argument('-state', type=bool, default=True, help='save training state or not')
 parser.add_argument('-gpu', type=str, help='gpu_id', default='0')
 
 # parser.add_argument('--local_rank', type=int, default=0)
@@ -122,6 +123,8 @@ elif opt['model_name'] == 'INNSR_model_2':
     from models.INNSR_model_2 import INNSRModel as M
 elif opt['model_name'] == 'INNSR_model_0':
     from models.INNSR_model_0 import INNSRModel as M
+elif opt['model_name'] == 'INNSR_model_3':
+    from models.INNSR_model_3 import INNSRModel as M
 else:
     raise NotImplementedError('Model [{:s}] is not defined.'.format(opt['model_name']))
 model = M(opt)
@@ -186,14 +189,14 @@ for epoch in range(start_epoch, total_epochs + 1):
                 tb_logger.add_scalar('psnr_sr', avg_psnr_SR, current_step)
         
         # 保存模型及训练数据
-        if current_step % opt['logger']['save_checkpoint_freq'] == 0:
+        if args.state and current_step % opt['logger']['save_checkpoint_freq'] == 0:
             logger.info('Saving models and training states.')
             model.save(current_step)
             model.save_training_state(epoch, current_step)
 
         # test
         if current_step % opt['train']['test_freq'] == 0:
-            log_msg = '<epoch:{:3d}, iter:{:8,d}> psnr_sr: {:.4e}. Y_channel PSNR/SSIM: \n'
+            log_msg = '<epoch:{:3d}, iter:{:8,d}>. Y_channel PSNR/SSIM: \n'.format(epoch, current_step)
             for name, test_loader in test_loaders.items():
                 avg_psnr_y_SR = 0.0
                 avg_ssim_y_SR = 0.0

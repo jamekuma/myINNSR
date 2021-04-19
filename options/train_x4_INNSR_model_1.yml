@@ -1,4 +1,4 @@
-name: train_INN_x4_RCANgap_Lab@3_lr_2e-4
+name: INN_x4_RCANgap_Lab@3_lr_2e-4
 
 use_tb_logger: true
 scale: 4

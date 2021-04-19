@@ -1,8 +1,8 @@
-name: train_INN_x4_CADenseBlock_trainable
+name: INN_x4_INNSR_model_3
 
 use_tb_logger: true
 scale: 4
-model_name: INNSR_model_0
+model_name: INNSR_model_3
 
 # 数据集
 datasets:
@@ -13,8 +13,8 @@ datasets:
     dataroot_GT: ~/datasets/DIV2K_train_HR 
     dataroot_LQ: ~/datasets/DIV2K_train_LR_bicubic/X4 
     n_workers: 4
-    batch_size: 16
-    GT_size: 144
+    batch_size: 8
+    GT_size: 48
     use_crop: true
     use_flip: true
     use_rot: true
@@ -50,8 +50,8 @@ datasets:
 network: 
   INN:
     fixed: false  # 是否固定参数
-    subnet_type: DBNet_CA
-    downscale_trainable: true
+    subnet_type: DBNet_CA_2
+    downscale_trainable: false
     in_nc: 3
     out_nc: 3
     block_num: [8, 8]
@@ -90,9 +90,8 @@ train:
   # lambda_fit_forw: 4.
   # lambda_rec_back: 1
   # lambda_ce_forw: 1
-  lambda_fit_forw: 10
-  lambda_rec_back: 10
-  lambda_ce_forw: 1
+  lambda_fit_forw: 15
+  lambda_rec_back: 1
   weight_decay_INN: !!float 1e-5
   gradient_clipping: 10
 
