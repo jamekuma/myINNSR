@@ -50,7 +50,7 @@ datasets:
 network: 
   INN:
     fixed: false  # 是否固定参数
-    subnet_type: DBNet_CA_2
+    subnet_type: DBNet
     downscale_trainable: false
     in_nc: 3
     out_nc: 3
