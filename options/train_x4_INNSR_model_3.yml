@@ -68,7 +68,7 @@ path:
 train:
   lr: !!float 2e-4 # 初始学习率
   beta1: 0.9
-  beta2: 0.999
+  beta2: 0.99
   n_iter: 1500000
   warmup_iter: -1  # no warm up
 
