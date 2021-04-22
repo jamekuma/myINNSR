@@ -3,12 +3,15 @@ import os.path as osp
 import logging
 import yaml
 
-def parse(path, is_train=True):
+def parse(path, is_train=True, rename=None):
     '''
     解析配置文件
     '''
     with open(path, mode='r') as f:
         opt = yaml.safe_load(f)
+    if rename:
+        print('rename the opt[\'name\'] from \'' + opt['name'] + '\' to \'' + rename + '\'')
+        opt['name'] = rename
 
     opt['is_train'] = is_train
     # 在哪些gpu上运行

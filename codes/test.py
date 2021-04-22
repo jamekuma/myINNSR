@@ -6,22 +6,31 @@ import argparse
 from collections import OrderedDict
 from data.dataset import LQGTDataset
 import numpy as np
+import os
 import config.config as config
 import utils.utils as util
 
 #### options
 parser = argparse.ArgumentParser()
 parser.add_argument('-opt', type=str, required=True, help='Path to options YMAL file.')
-opt = config.parse(parser.parse_args().opt, is_train=False)
+parser.add_argument('-gpu', type=str, help='gpu_id', default='0')
+parser.add_argument('--debug', help='debug mode, do not make any dict', action="store_true")
+args = parser.parse_args()
+opt = config.parse(args.opt, is_train=False)
 opt = config.dict_to_nonedict(opt)
 
-util.mkdirs(
+opt['gpu_ids'] = [int(x) for x in args.gpu.split(',')]
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+print('export CUDA_VISIBLE_DEVICES=' + args.gpu)
+
+if not args.debug:
+    util.mkdirs(
     (path for key, path in opt['path'].items()
      if not key == 'experiments_root' and 'pretrain_model' not in key and 'resume' not in key))
 util.setup_logger('base', opt['path']['log'], 'test_' + opt['name'], level=logging.INFO,
-                  screen=True, tofile=True)
+                  screen=True, tofile=not args.debug)
 util.setup_logger('avg', opt['path']['log'], 'avg_' + opt['name'], level=logging.INFO,
-                  screen=False, tofile=True)
+                  screen=False, tofile=not args.debug)
 logger = logging.getLogger('base')
 logger.info(config.dict2str(opt))
 

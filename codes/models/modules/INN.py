@@ -174,6 +174,7 @@ class InvSRNet(nn.Module):
         self.upscale_blocks = nn.ModuleList()
         self.downscale_blocks = nn.ModuleList()
         self.inv_blocks = nn.ModuleList()
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
         for i in range(down_num):
             self.downscale_blocks.append(nn.Conv2d(current_channel, current_channel * 4, 3, stride=2, padding=1))
             operations = []
@@ -192,12 +193,12 @@ class InvSRNet(nn.Module):
         out = x
         if not rev:
             for i in range(self.down_num):
-                out = self.downscale_blocks[i](out)
+                out = self.lrelu(self.downscale_blocks[i](out))
                 for inv in self.inv_blocks[i]:
                     out = inv(out)
-            out = self.end_forward_conv(out)
+            out = self.lrelu(self.end_forward_conv(out))
         else:
-            out = self.end_backward_conv(out)
+            out = self.lrelu(self.end_backward_conv(out))
             for i in reversed(range(self.down_num)):
                 for inv in reversed(self.inv_blocks[i]):
                     out = inv(out, rev=True)

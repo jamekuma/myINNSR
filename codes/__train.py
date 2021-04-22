@@ -24,10 +24,10 @@ parser.add_argument('--launcher', choices=['none', 'pytorch'], default='none',
 parser.add_argument('--debug', help='debug mode, do not make any dict', action="store_true")
 parser.add_argument('-state', type=bool, default=True, help='save training state or not')
 parser.add_argument('-gpu', type=str, help='gpu_id', default='0')
-
+parser.add_argument('-rename', type=str, help='rename the experiment', default=None)
 # parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
-opt = config.parse(args.opt, is_train=True)
+opt = config.parse(args.opt, is_train=True, rename=args.rename)
 opt['gpu_ids'] = [int(x) for x in args.gpu.split(',')]
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 print('export CUDA_VISIBLE_DEVICES=' + args.gpu)
