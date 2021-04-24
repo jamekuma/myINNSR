@@ -87,7 +87,7 @@ class DenseBlock_CA_2(nn.Module):
         self.conv5 = nn.Conv2d(channel_in + 4 * gc, channel_out, 3, 1, 1, bias=bias)
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
-        self.CA_layer = CALayer(channel_in + 4 * gc, reduction=32)
+        self.CA_layer = CALayer(channel_in + 3 * gc, reduction=16)
 
         if init == 'xavier':
             utils.initialize_weights_xavier([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
@@ -99,9 +99,9 @@ class DenseBlock_CA_2(nn.Module):
         x1 = self.lrelu(self.conv1(x))
         x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
         x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
-        x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
-        x_ca = self.CA_layer(torch.cat((x, x1, x2, x3, x4), 1))
-        x5 = self.conv5(x_ca)
+        x_ca = self.CA_layer(torch.cat((x, x1, x2, x3), 1))
+        x4 = self.lrelu(self.conv4(x_ca))
+        x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
         return x5
 
 class RCABlock(nn.Module):

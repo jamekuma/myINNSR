@@ -95,23 +95,25 @@ class INNSRModel(BaseModel):
         back_out_image = back_out[:, :3, :, :]
         l_back_rec = self.train_opt['lambda_rec_back'] * self.Reconstruction_back(self.real_H, back_out_image)
 
-        return l_back_rec
+        return l_back_rec, back_out_image
     
 
 
     def optimize_parameters(self, step):
         self.optimizer.zero_grad()
 
+        ######### 逆向loss
+        back_out = self.INN(self.ref_L, rev=True)
+        l_back_rec, sr_image = self.INN_loss_backward(back_out)
+
         ########## 正向loss
         # with torch.no_grad():
-        self.forw_out = self.INN(self.real_H) # 正向推理
+        self.forw_out = self.INN(sr_image) # 正向推理
         l_forw_fit = self.INN_loss_forward(self.forw_out, self.ref_L)
 
         zshape = self.forw_out[:, 3:, :, :].shape
 
-        ######### 逆向loss
-        back_out = self.INN(self.ref_L, rev=True)
-        l_back_rec = self.INN_loss_backward(back_out)
+        
 
         # total loss
         loss = 0
