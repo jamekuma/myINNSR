@@ -12,6 +12,7 @@ from .base_model import BaseModel
 # from models.modules.loss import ReconstructionLoss
 from models.modules.Quantization import Quantization
 from torch.distributions.laplace import Laplace
+from torch.distributions.normal import Normal
 from models.modules.INN import InvRescaleNet
 from models.modules.RCAN import RCAN
 from models.modules.subnet import subnet
@@ -38,7 +39,12 @@ class INNSRModel(BaseModel):
              subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num'],
              downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
         self.INN = DataParallel(self.INN)
-        
+        if INN_network_opt['z_dist'] == 'normal':
+            self.sampler = Normal(torch.Tensor([0.0]), torch.Tensor([1.0]))
+        elif INN_network_opt['z_dist'] == 'laplace':
+            self.sampler = Laplace(torch.Tensor([0.0]), torch.Tensor([1.0]))
+        else:
+            raise NotImplementedError('Distribution of z is not recognized.')
         # print 
         if print_network:
             self.print_network()
@@ -83,8 +89,9 @@ class INNSRModel(BaseModel):
         self.real_H = data['GT'].to(self.device)  # GT
 
 
-    def gaussian_batch(self, dims):
-        res = torch.randn(tuple(dims)).to(self.device)
+    def z_sample_batch(self, dims):
+        # res = torch.randn(tuple(dims)).to(self.device)
+        res = self.sampler.sample(sample_shape=tuple(dims))
         return res
 
     def INN_loss_forward(self, forw_out, ref_L):
@@ -94,8 +101,10 @@ class INNSRModel(BaseModel):
 
         
         out_z = out_z.reshape([forw_out.shape[0], -1])
-        l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(out_z**2) / out_z.shape[0]
-
+        if self.INN_network_opt['z_dist'] == 'normal':
+            l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(out_z**2) / out_z.shape[0]
+        elif self.INN_network_opt['z_dist'] == 'laplace':
+            l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(out_z) / out_z.shape[0]
         return l_forw_fit, l_forw_ce
 
     def INN_loss_backward(self, back_out):
@@ -117,7 +126,7 @@ class INNSRModel(BaseModel):
         zshape = self.forw_out[:, 3:, :, :].shape
 
         ######### 逆向loss
-        back_out = self.INN(torch.cat((self.ref_L, self.gaussian_batch(zshape)), dim=1), rev=True)
+        back_out = self.INN(torch.cat((self.ref_L, self.z_sample_batch(zshape)), dim=1), rev=True)
         l_back_rec = self.INN_loss_backward(back_out)
 
         # total loss
@@ -154,7 +163,7 @@ class INNSRModel(BaseModel):
         with torch.no_grad():
             self.forw_L = self.INN(x=self.input)[:, :3, :, :]
             self.forw_L = self.Quantization(self.forw_L)
-            y_forw = torch.cat((self.ref_L, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
+            y_forw = torch.cat((self.ref_L, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
             self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
 
         INN_network_opt = self.opt['network']['INN']
@@ -186,7 +195,7 @@ class INNSRModel(BaseModel):
             return HR_imgs
         else:
             with torch.no_grad():
-                y_ = torch.cat((LR_img, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
+                y_ = torch.cat((LR_img, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
                 HR_img = self.INN(x=y_, rev=True)[:, :3, :, :]
             self.INN.train()
             return HR_img

@@ -37,6 +37,8 @@ network:
     out_nc: 3
     block_num: [8, 8]
     init: xavier
+    z_dist: normal  # normal / laplace / 
+
     
 
 
