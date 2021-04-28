@@ -86,7 +86,7 @@ train:
   manual_seed: 10
 
   val_freq: !!float 5e3
-  test_freq: !!float 5e4
+  test_freq: !!float 2e4
   # lambda_fit_forw: 4.
   # lambda_rec_back: 1
   # lambda_ce_forw: 1
