@@ -40,9 +40,9 @@ class INNSRModel(BaseModel):
              downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
         self.INN = DataParallel(self.INN)
         if INN_network_opt['z_dist'] == 'normal':
-            self.sampler = Normal(torch.Tensor([0.0]), torch.Tensor([1.0]))
+            self.sampler = Normal(0.0, 1.0)
         elif INN_network_opt['z_dist'] == 'laplace':
-            self.sampler = Laplace(torch.Tensor([0.0]), torch.Tensor([1.0]))
+            self.sampler = Laplace(0.0, 1.0)
         else:
             raise NotImplementedError('Distribution of z is not recognized.')
         # print 
@@ -91,7 +91,7 @@ class INNSRModel(BaseModel):
 
     def z_sample_batch(self, dims):
         # res = torch.randn(tuple(dims)).to(self.device)
-        res = self.sampler.sample(sample_shape=tuple(dims))
+        res = self.sampler.sample(sample_shape=tuple(dims)).to(self.device)
         return res
 
     def INN_loss_forward(self, forw_out, ref_L):

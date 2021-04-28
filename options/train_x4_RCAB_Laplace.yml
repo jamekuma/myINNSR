@@ -1,4 +1,4 @@
-name: INN_x4_RCAB
+name: INN_x4_RCAB_Laplace
 
 use_tb_logger: true
 scale: 4
