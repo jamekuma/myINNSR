@@ -168,16 +168,16 @@ for epoch in range(start_epoch, total_epochs + 1):
                 visuals = model.get_current_visuals()
                 sr_img = util.tensor2img(visuals['SR'])  # uint8
                 gt_img = util.tensor2img(visuals['GT'])  # uint8
-                lr_forw_img = util.tensor2img(visuals['LR_forw'])
+                # lr_forw_img = util.tensor2img(visuals['LR_forw'])
                 # gtl_img = util.tensor2img(visuals['LR_ref'])
 
                 gt_img = gt_img / 255.
                 sr_img = sr_img / 255.
-                lr_forw_img = lr_forw_img / 255.
+                # lr_forw_img = lr_forw_img / 255.
 
                 cropped_sr_img = sr_img[crop_size:-crop_size, crop_size:-crop_size, :]
                 cropped_gt_img = gt_img[crop_size:-crop_size, crop_size:-crop_size, :]
-                cropped_lr_forw_img = lr_forw_img[1:-1, 1:-1, :]
+                # cropped_lr_forw_img = lr_forw_img[1:-1, 1:-1, :]
                 
                 avg_psnr_SR += util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)
             avg_psnr_SR = avg_psnr_SR / cnt

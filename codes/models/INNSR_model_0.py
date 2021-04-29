@@ -117,17 +117,22 @@ class INNSRModel(BaseModel):
 
     def optimize_parameters(self, step):
         self.optimizer.zero_grad()
-
-        ########## 正向loss
-        # with torch.no_grad():
-        self.forw_out = self.INN(self.real_H) # 正向推理
-        l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out, self.ref_L)
-
-        zshape = self.forw_out[:, 3:, :, :].shape
-
+        Lshape = self.ref_L.shape
+        zshape = [Lshape[0], Lshape[1] * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
         ######### 逆向loss
         back_out = self.INN(torch.cat((self.ref_L, self.z_sample_batch(zshape)), dim=1), rev=True)
         l_back_rec = self.INN_loss_backward(back_out)
+        sr_image = back_out[:, :3, :, :]
+        ########## 正向loss
+        # with torch.no_grad():
+        if self.train_opt['forw_loss_mode'] == 'origin':
+            self.forw_out = self.INN(self.real_H)  # 输入HR正向推理
+        elif self.train_opt['forw_loss_mode'] == 'cycle':
+            self.forw_out = self.INN(sr_image)  # 输入SR正向推理
+        else:
+            raise NotImplementedError('THe mode of forward loss is invalid!')
+        l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out, self.ref_L)
+
 
         # total loss
         loss = 0
@@ -150,10 +155,10 @@ class INNSRModel(BaseModel):
     def test(self):
         Lshape = self.ref_L.shape
 
-        input_dim = Lshape[1]
+
         self.input = self.real_H
 
-        zshape = [Lshape[0], input_dim * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
+        zshape = [Lshape[0], Lshape[1] * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
 
         gaussian_scale = 1
         if self.test_opt and self.test_opt['gaussian_scale'] != None:
@@ -161,8 +166,8 @@ class INNSRModel(BaseModel):
 
         self.INN.eval()
         with torch.no_grad():
-            self.forw_L = self.INN(x=self.input)[:, :3, :, :]
-            self.forw_L = self.Quantization(self.forw_L)
+            # self.forw_L = self.INN(x=self.input)[:, :3, :, :]
+            # self.forw_L = self.Quantization(self.forw_L)
             y_forw = torch.cat((self.ref_L, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
             self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
 
@@ -207,7 +212,7 @@ class INNSRModel(BaseModel):
         out_dict = OrderedDict()
         out_dict['LR_ref'] = self.ref_L.detach()[0].float().cpu()
         out_dict['SR'] = self.fake_H.detach()[0].float().cpu()
-        out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
+        # out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
         out_dict['GT'] = self.real_H.detach()[0].float().cpu()
         return out_dict
 
