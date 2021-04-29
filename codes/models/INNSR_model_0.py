@@ -104,7 +104,7 @@ class INNSRModel(BaseModel):
         if self.INN_network_opt['z_dist'] == 'normal':
             l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(out_z**2) / out_z.shape[0]
         elif self.INN_network_opt['z_dist'] == 'laplace':
-            l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(out_z) / out_z.shape[0]
+            l_forw_ce = self.train_opt['lambda_ce_forw'] * torch.sum(torch.abs(out_z)) / out_z.shape[0]
         return l_forw_fit, l_forw_ce
 
     def INN_loss_backward(self, back_out):
