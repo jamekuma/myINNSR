@@ -1,4 +1,4 @@
-name: INN_x4_RCAB_cycle
+name: INN_x4_RCAB_small_size
 
 use_tb_logger: true
 scale: 4
@@ -14,7 +14,7 @@ datasets:
     dataroot_LQ: ~/datasets/DIV2K_train_LR_bicubic/X4 
     n_workers: 4 
     batch_size: 16
-    GT_size: 144
+    GT_size: 48
     use_crop: true
     use_flip: true
     use_rot: true
@@ -93,7 +93,7 @@ train:
   lambda_fit_forw: 10
   lambda_rec_back: 10
   lambda_ce_forw: 1
-  forw_loss_mode: origin
+  forw_loss_mode: cycle
   weight_decay_INN: !!float 1e-5
   gradient_clipping: 10
 
