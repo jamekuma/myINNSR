@@ -93,7 +93,7 @@ train:
   lambda_fit_forw: 10
   lambda_rec_back: 10
   lambda_ce_forw: 1
-  forw_loss_mode: origin
+  forw_loss_mode: cycle
   weight_decay_INN: !!float 1e-5
   gradient_clipping: 10
 
