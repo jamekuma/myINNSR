@@ -37,7 +37,8 @@ class INNSRModel(BaseModel):
         self.INN = InvRescaleNet(
             channel_in=INN_network_opt['in_nc'], channel_out=INN_network_opt['out_nc'],
              subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num'],
-             downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
+             downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2)),
+             plus=INN_network_opt['plus'] if INN_network_opt['plus'] else False).to(self.device)
         self.INN = DataParallel(self.INN)
         if INN_network_opt['z_dist'] == 'normal':
             self.sampler = Normal(0.0, 1.0)

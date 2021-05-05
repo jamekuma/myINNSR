@@ -41,6 +41,36 @@ class InvBlockExp(nn.Module):
 
         return jac / x.shape[0]
 
+class InvBlockExpPlus(nn.Module):
+    '''可逆网络模块Plus'''
+    def __init__(self, subnet_constructor, channel_num, channel_split_num, clamp=1.):
+        super(InvBlockExpPlus, self).__init__()
+
+        self.split_len1 = channel_split_num
+        self.split_len2 = channel_num - channel_split_num
+
+        self.clamp = clamp
+
+        self.E = subnet_constructor(self.split_len2, self.split_len1)
+        self.F = subnet_constructor(self.split_len2, self.split_len1)
+        self.G = subnet_constructor(self.split_len1, self.split_len2)
+        self.H = subnet_constructor(self.split_len1, self.split_len2)
+        
+
+    def forward(self, x, rev=False):
+        x1, x2 = (x.narrow(1, 0, self.split_len1), x.narrow(1, self.split_len1, self.split_len2))
+
+        if not rev:
+            y1 = x1.mul(torch.exp(torch.sigmoid(self.E(x2)) * 2 - 1)) + self.F(x2)
+            self.s = self.clamp * (torch.sigmoid(self.H(y1)) * 2 - 1)
+            y2 = x2.mul(torch.exp(self.s)) + self.G(y1)
+        else:
+            self.s = self.clamp * (torch.sigmoid(self.H(x1)) * 2 - 1)
+            y2 = (x2 - self.G(x1)).div(torch.exp(self.s))
+            y1 = (x1 - self.F(y2)).div(torch.exp(torch.sigmoid(self.E(y2)) * 2 - 1))
+
+        return torch.cat((y1, y2), 1)
+
 
 class HaarDownsampling(nn.Module):
     '''
@@ -123,7 +153,7 @@ class InvRescaleNet(nn.Module):
     '''
     整个可逆网络结构
     '''
-    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2, downscale_trainable=False):
+    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2, downscale_trainable=False, plus=False):
         '''
         subnet_constructor: 学习函数的构造器, 参数为(输入通道数, 输出通道数)
         down_num: 下采样的次数, 即down_num = log(scale)
@@ -138,7 +168,10 @@ class InvRescaleNet(nn.Module):
             operations.append(b)
             current_channel *= 4
             for j in range(block_num[i]):
-                b = InvBlockExp(subnet_constructor, current_channel, channel_out)
+                if plus:
+                    b = InvBlockExpPlus(subnet_constructor, current_channel, channel_out)
+                else:
+                    b = InvBlockExp(subnet_constructor, current_channel, channel_out)
                 operations.append(b)
 
         self.operations = nn.ModuleList(operations)
@@ -166,6 +199,7 @@ class InvRescaleNet(nn.Module):
 
 class InvSRNet(nn.Module):
     '''
+    INNSR_model_3
     '''
     def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, block_num=[], down_num=2, downscale_trainable=False):
         super(InvSRNet, self).__init__()
