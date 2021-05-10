@@ -121,9 +121,13 @@ class INNSRModel(BaseModel):
         Lshape = self.ref_L.shape
         zshape = [Lshape[0], Lshape[1] * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
         ######### 逆向loss
-        back_out = self.INN(torch.cat((self.ref_L, self.z_sample_batch(zshape)), dim=1), rev=True)
-        l_back_rec = self.INN_loss_backward(back_out)
-        sr_image = back_out[:, :3, :, :]
+        if self.train_opt['lambda_rec_back'] != 0:
+            back_out = self.INN(torch.cat((self.ref_L, self.z_sample_batch(zshape)), dim=1), rev=True)
+            l_back_rec = self.INN_loss_backward(back_out)
+            sr_image = back_out[:, :3, :, :]
+        else:
+            l_back_rec = torch.Tensor([0]).to(self.device)
+            
         ########## 正向loss
         # with torch.no_grad():
         if self.train_opt['forw_loss_mode'] == 'origin':
