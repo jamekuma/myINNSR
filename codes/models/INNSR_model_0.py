@@ -130,13 +130,14 @@ class INNSRModel(BaseModel):
             
         ########## 正向loss
         # with torch.no_grad():
-        if self.train_opt['forw_loss_mode'] == 'origin':
-            self.forw_out = self.INN(self.real_H)  # 输入HR正向推理
-        elif self.train_opt['forw_loss_mode'] == 'cycle':
-            self.forw_out = self.INN(sr_image)  # 输入SR正向推理
-        else:
-            raise NotImplementedError('THe mode of forward loss is invalid!')
-        l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out, self.ref_L)
+        if self.train_opt['lambda_ce_forw'] != 0 or self.train_opt['lambda_fit_forw'] != 0:
+            if self.train_opt['forw_loss_mode'] == 'origin':
+                self.forw_out = self.INN(self.real_H)  # 输入HR正向推理
+            elif self.train_opt['forw_loss_mode'] == 'cycle':
+                self.forw_out = self.INN(sr_image)  # 输入SR正向推理
+            else:
+                raise NotImplementedError('THe mode of forward loss is invalid!')
+            l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out, self.ref_L)
 
 
         # total loss
