@@ -136,10 +136,9 @@ class INNSRModel(BaseModel):
     def test(self):
         Lshape = self.ref_L.shape
 
-        input_dim = Lshape[1]
         self.input = self.real_H
 
-        # zshape = [Lshape[0], input_dim * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
+        zshape = [Lshape[0], Lshape[1] * (self.opt['scale']**2) - Lshape[1], Lshape[2], Lshape[3]]
 
         gaussian_scale = 1
         if self.test_opt and self.test_opt['gaussian_scale'] != None:
@@ -149,9 +148,8 @@ class INNSRModel(BaseModel):
         with torch.no_grad():
             self.forw_L = self.INN(x=self.input)[:, :3, :, :]
             self.forw_L = self.Quantization(self.forw_L)
-            # y_forw = torch.cat((, gaussian_scale * self.gaussian_batch(zshape)), dim=1)
-            self.fake_H = self.INN(x=self.ref_L, rev=True)
-
+            self.SR_img = self.INN(x=self.ref_L, rev=True)[:, :3, :, :]
+            self.rescaling_img = self.INN(x=self.forw_L, rev=True)[:, :3, :, :]
         INN_network_opt = self.opt['network']['INN']
         if not INN_network_opt['fixed']:
             self.INN.train()
@@ -180,8 +178,9 @@ class INNSRModel(BaseModel):
     def get_current_visuals(self):
         out_dict = OrderedDict()
         out_dict['LR_ref'] = self.ref_L.detach()[0].float().cpu()
-        out_dict['SR'] = self.fake_H.detach()[0].float().cpu()
+        out_dict['SR'] = self.SR_img.detach()[0].float().cpu()
         out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
+        out_dict['rescaling'] = self.rescaling_img.detach()[0].float().cpu()
         out_dict['GT'] = self.real_H.detach()[0].float().cpu()
         return out_dict
 

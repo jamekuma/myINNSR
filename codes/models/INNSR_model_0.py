@@ -174,11 +174,12 @@ class INNSRModel(BaseModel):
 
         self.INN.eval()
         with torch.no_grad():
-            # self.forw_L = self.INN(x=self.input)[:, :3, :, :]
-            # self.forw_L = self.Quantization(self.forw_L)
-            y_forw = torch.cat((self.ref_L, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
-            self.fake_H = self.INN(x=y_forw, rev=True)[:, :3, :, :]
-
+            self.forw_L = self.INN(x=self.input)[:, :3, :, :]
+            self.forw_L = self.Quantization(self.forw_L)
+            LR_img = torch.cat((self.ref_L, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
+            downscaling_img = torch.cat((self.forw_L, gaussian_scale * self.z_sample_batch(zshape)), dim=1)
+            self.SR_img = self.INN(x=LR_img, rev=True)[:, :3, :, :]
+            self.rescaling_img = self.INN(x=downscaling_img, rev=True)[:, :3, :, :]
         INN_network_opt = self.opt['network']['INN']
         if not INN_network_opt['fixed']:
             self.INN.train()
@@ -219,8 +220,9 @@ class INNSRModel(BaseModel):
     def get_current_visuals(self):
         out_dict = OrderedDict()
         out_dict['LR_ref'] = self.ref_L.detach()[0].float().cpu()
-        out_dict['SR'] = self.fake_H.detach()[0].float().cpu()
-        # out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
+        out_dict['SR'] = self.SR_img.detach()[0].float().cpu()
+        out_dict['LR_forw'] = self.forw_L.detach()[0].float().cpu()
+        out_dict['rescaling'] = self.rescaling_img.detach()[0].float().cpu()
         out_dict['GT'] = self.real_H.detach()[0].float().cpu()
         return out_dict
 

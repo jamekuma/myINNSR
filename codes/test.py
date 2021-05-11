@@ -50,6 +50,8 @@ elif opt['model_name'] == 'INNSR_model_2':
     from models.INNSR_model_2 import INNSRModel as M
 elif opt['model_name'] == 'INNSR_model_0':
     from models.INNSR_model_0 import INNSRModel as M
+elif opt['model_name'] == 'INNSR_model_3':
+    from models.INNSR_model_3 import INNSRModel as M
 else:
     raise NotImplementedError('Model [{:s}] is not defined.'.format(opt['model_name']))
 model = M(opt)
@@ -66,10 +68,16 @@ for test_loader in test_loaders:
     test_results['psnr_y'] = []
     test_results['ssim_y'] = []
 
-    test_results['psnr_lr'] = []
-    test_results['ssim_lr'] = []
-    test_results['psnr_y_lr'] = []
-    test_results['ssim_y_lr'] = []
+
+    test_results['rescaling_psnr'] = []
+    test_results['rescaling_ssim'] = []
+    test_results['rescaling_psnr_y'] = []
+    test_results['rescaling_ssim_y'] = []
+
+    # test_results['psnr_lr'] = []
+    # test_results['ssim_lr'] = []
+    # test_results['psnr_y_lr'] = []
+    # test_results['ssim_y_lr'] = []
 
     for data in test_loader:
         model.feed_data(data)
@@ -81,12 +89,13 @@ for test_loader in test_loaders:
 
         lr_img = util.tensor2img(visuals['LR_ref'])
         sr_img = util.tensor2img(visuals['SR'])  # uint8
-        srgt_img = util.tensor2img(visuals['GT'])  # uint8
-
+        gt_img = util.tensor2img(visuals['GT'])  # uint8
+        rescaling_img = util.tensor2img(visuals['rescaling'])  # uint8
         
         util.save_img(lr_img, osp.join(dataset_dir, img_name + '_LR.png'))
         util.save_img(sr_img, osp.join(dataset_dir, img_name + '_SR.png'))
-        util.save_img(srgt_img, osp.join(dataset_dir, img_name + '_GT.png'))
+        util.save_img(gt_img, osp.join(dataset_dir, img_name + '_GT.png'))
+        util.save_img(rescaling_img, osp.join(dataset_dir, img_name + '_rescaling.png'))
         
 
         # calculate PSNR and SSIM
@@ -94,64 +103,82 @@ for test_loader in test_loaders:
 
         gt_img = gt_img / 255.
         sr_img = sr_img / 255.
+        rescaling_img = rescaling_img / 255.
 
         crop_border = opt['crop_border'] if opt['crop_border'] else opt['scale']
         if crop_border == 0:
             cropped_sr_img = sr_img
             cropped_gt_img = gt_img
+            cropped_rescaling_img = rescaling_img
         else:
             cropped_sr_img = sr_img[crop_border:-crop_border, crop_border:-crop_border, :]
             cropped_gt_img = gt_img[crop_border:-crop_border, crop_border:-crop_border, :]
+            cropped_rescaling_img = rescaling_img[crop_border:-crop_border, crop_border:-crop_border, :]
 
         psnr = util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)
         ssim = util.calculate_ssim(cropped_sr_img * 255, cropped_gt_img * 255)
+        rescaling_psnr = util.calculate_psnr(cropped_rescaling_img * 255, cropped_gt_img * 255)
+        rescaling_ssim = util.calculate_ssim(cropped_rescaling_img * 255, cropped_gt_img * 255)
         test_results['psnr'].append(psnr)
         test_results['ssim'].append(ssim)
-
+        test_results['rescaling_psnr'].append(rescaling_psnr)
+        test_results['rescaling_ssim'].append(rescaling_ssim)
 
         if gt_img.shape[2] == 3:  # RGB image
             sr_img_y = util.bgr2ycbcr(sr_img, only_y=True)
             gt_img_y = util.bgr2ycbcr(gt_img, only_y=True)
+            rescaling_img_y = util.bgr2ycbcr(rescaling_img, only_y=True)
             if crop_border == 0:
                 cropped_sr_img_y = sr_img_y
                 cropped_gt_img_y = gt_img_y
+                cropped_rescaling_img_y = rescaling_img_y
             else:
                 cropped_sr_img_y = sr_img_y[crop_border:-crop_border, crop_border:-crop_border]
                 cropped_gt_img_y = gt_img_y[crop_border:-crop_border, crop_border:-crop_border]
+                cropped_rescaling_img_y = rescaling_img_y[crop_border:-crop_border, crop_border:-crop_border]
+
             psnr_y = util.calculate_psnr(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
             ssim_y = util.calculate_ssim(cropped_sr_img_y * 255, cropped_gt_img_y * 255)
+            rescaling_psnr_y = util.calculate_psnr(cropped_rescaling_img_y * 255, cropped_gt_img_y * 255)
+            rescaling_ssim_y = util.calculate_ssim(cropped_rescaling_img_y * 255, cropped_gt_img_y * 255)
             test_results['psnr_y'].append(psnr_y)
             test_results['ssim_y'].append(ssim_y)
+            test_results['rescaling_psnr_y'].append(rescaling_psnr_y)
+            test_results['rescaling_ssim_y'].append(rescaling_ssim_y)
 
             logger.info(
-                    '{:20s} - PSNR: {:.6f} dB; SSIM: {:.6f}; PSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}.'.
-                format(img_name, psnr, ssim, psnr_y, ssim_y))
+                    '{:20s} - PSNR: {:.6f} dB; SSIM: {:.6f}; PSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}. PSNR_rescaling: {:.6f} dB; SSIM_rescaling: {:.6f}; PSNR_Y_rescaling: {:.6f} dB; SSIM_Y_rescaling: {:.6f} '.
+                format(img_name, psnr, ssim, psnr_y, ssim_y, rescaling_psnr, rescaling_ssim, rescaling_psnr_y, rescaling_ssim_y))
             
         else:
             logger.info('{:20s} - PSNR: {:.6f} dB; SSIM: {:.6f}.'.format(img_name, psnr, ssim))
 
     # Average PSNR/SSIM results
-    ave_psnr = sum(test_results['psnr']) / len(test_results['psnr'])
-    ave_ssim = sum(test_results['ssim']) / len(test_results['ssim'])
+    avg_psnr = sum(test_results['psnr']) / len(test_results['psnr'])
+    avg_ssim = sum(test_results['ssim']) / len(test_results['ssim'])
+    avg_rescaling_psnr = sum(test_results['rescaling_psnr']) / len(test_results['rescaling_psnr'])
+    avg_rescaling_ssim = sum(test_results['rescaling_ssim']) / len(test_results['rescaling_ssim'])
 
     logger.info(
-            '----Average PSNR/SSIM results for {}----\n\tpsnr: {:.6f} db; ssim: {:.6f}. \n'.format(
-            test_set_name, ave_psnr, ave_ssim))
+            '----Average PSNR/SSIM results for {}----\n\tpsnr: {:.6f} db; ssim: {:.6f}; psnr_rescaling: {:.6f} db; ssim_rescaling: {:.6f}.'.format(
+            test_set_name, avg_psnr, avg_ssim, avg_rescaling_psnr, avg_rescaling_ssim))
     logger = logging.getLogger('avg')
     logger.info(
-            '----Average PSNR/SSIM results for {}----\n\tpsnr: {:.6f} db; ssim: {:.6f}. \n'.format(
-            test_set_name, ave_psnr, ave_ssim))
+            '----Average PSNR/SSIM results for {}----\n\tpsnr: {:.6f} db; ssim: {:.6f}; psnr_rescaling: {:.6f} db; ssim_rescaling: {:.6f}.'.format(
+            test_set_name, avg_psnr, avg_ssim, avg_rescaling_psnr, avg_rescaling_ssim))
     logger = logging.getLogger('base')
             
     if test_results['psnr_y'] and test_results['ssim_y']:
-        ave_psnr_y = sum(test_results['psnr_y']) / len(test_results['psnr_y'])
-        ave_ssim_y = sum(test_results['ssim_y']) / len(test_results['ssim_y'])
+        avg_psnr_y = sum(test_results['psnr_y']) / len(test_results['psnr_y'])
+        avg_ssim_y = sum(test_results['ssim_y']) / len(test_results['ssim_y'])
+        avg_rescaling_psnr_y = sum(test_results['rescaling_psnr_y']) / len(test_results['rescaling_psnr_y'])
+        avg_rescaling_ssim_y = sum(test_results['rescaling_ssim_y']) / len(test_results['rescaling_ssim_y'])
 
         logger.info(
-            '----Y channel, average PSNR/SSIM----\n\tPSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}.'.
-            format(ave_psnr_y, ave_ssim_y))
+            '----Y channel, average PSNR/SSIM----\n\tPSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}; PSNR_Y_rescaling: {:.6f} db; SSIM_Y_rescaling: {:.6f}.'.
+            format(avg_psnr_y, avg_ssim_y, avg_rescaling_psnr_y, avg_rescaling_ssim_y))
         logger = logging.getLogger('avg')
         logger.info(
-            '----Y channel, average PSNR/SSIM----\n\tPSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}. \n'.
-            format(ave_psnr_y, ave_ssim_y))
+            '----Y channel, average PSNR/SSIM----\n\tPSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}; PSNR_Y_rescaling: {:.6f} db; SSIM_Y_rescaling: {:.6f}.\n'.
+            format(avg_psnr_y, avg_ssim_y, avg_rescaling_psnr_y, avg_rescaling_ssim_y))
         logger = logging.getLogger('base')
