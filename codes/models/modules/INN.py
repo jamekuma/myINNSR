@@ -245,7 +245,7 @@ class InvSRNet_2(nn.Module):
     '''
     def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, n_feat=64, block_num=16, scale=2):
         super(InvSRNet_2, self).__init__()
-
+        self.block_num = block_num
         self.LR_conv = nn.Conv2d(channel_out, n_feat, 3, stride=1, padding=1)
         ## INV
         self.upscale_block = nn.Sequential(
@@ -270,14 +270,14 @@ class InvSRNet_2(nn.Module):
             out = self.HR_conv(out)
             out = self.lrelu(out)
             out = self.downscale_block(out)
-            for i in range(self.down_num):
+            for i in range(self.block_num):
                 out = self.inv_blocks[i](out)
             out = self.end_forward_conv(out)
             out = self.lrelu(out)
         else:
             out = self.LR_conv(out)
             out = self.lrelu(out)
-            for i in reversed(range(self.down_num)):
+            for i in reversed(range(self.block_num)):
                 out = self.inv_blocks[i](out)
             out = self.upscale_block(out)
         return out

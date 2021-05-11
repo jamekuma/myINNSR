@@ -38,8 +38,8 @@ class INNSRModel(BaseModel):
         #      subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num'],
         #      downscale_trainable=INN_network_opt['downscale_trainable'], down_num=int(math.log(opt['scale'], 2))).to(self.device)
         self.INN = InvSRNet_2(
-            channel_in=INN_network_opt['in_nc'], channel_out=INN_network_opt['out_nc'],
-             subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num']).to(self.device)
+            channel_in=INN_network_opt['in_nc'], channel_out=INN_network_opt['out_nc'],n_feat=INN_network_opt['n_feat'],
+             subnet_constructor=subnet(INN_network_opt['subnet_type']), block_num=INN_network_opt['block_num'], scale=opt['scale']).to(self.device)
         self.INN = DataParallel(self.INN)
         
         # print 

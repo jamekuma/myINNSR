@@ -1,4 +1,4 @@
-name: INN_x4_INNSR_model_3
+name: INN_x4_INNSR_model_3_new
 
 use_tb_logger: true
 scale: 4
@@ -14,7 +14,7 @@ datasets:
     dataroot_LQ: ~/datasets/DIV2K_train_LR_bicubic/X4 
     n_workers: 4
     batch_size: 8
-    GT_size: 48
+    GT_size: 144
     use_crop: true
     use_flip: true
     use_rot: true
@@ -54,6 +54,7 @@ network:
     downscale_trainable: false
     in_nc: 3
     out_nc: 3
+    n_feat: 64
     block_num: 16
     init: xavier
     z_dist: normal  # normal / laplace / 
