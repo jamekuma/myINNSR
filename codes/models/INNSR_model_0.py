@@ -138,7 +138,9 @@ class INNSRModel(BaseModel):
             else:
                 raise NotImplementedError('THe mode of forward loss is invalid!')
             l_forw_fit, l_forw_ce = self.INN_loss_forward(self.forw_out, self.ref_L)
-
+        else:
+            l_forw_fit = torch.Tensor([0]).to(self.device)
+            l_forw_ce = torch.Tensor([0]).to(self.device)
 
         # total loss
         loss = 0
