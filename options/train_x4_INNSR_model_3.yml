@@ -54,7 +54,7 @@ network:
     downscale_trainable: false
     in_nc: 3
     out_nc: 3
-    block_num: [8, 8]
+    block_num: 16
     init: xavier
     z_dist: normal  # normal / laplace / 
 

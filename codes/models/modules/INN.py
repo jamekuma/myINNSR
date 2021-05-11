@@ -238,3 +238,46 @@ class InvSRNet(nn.Module):
                     out = inv(out, rev=True)
                 out = self.upscale_blocks[i](out)
         return out
+
+class InvSRNet_2(nn.Module):
+    '''
+    INNSR_model_3 new
+    '''
+    def __init__(self, channel_in=3, channel_out=3, subnet_constructor=None, n_feat=64, block_num=16, scale=2):
+        super(InvSRNet_2, self).__init__()
+
+        self.LR_conv = nn.Conv2d(channel_out, n_feat, 3, stride=1, padding=1)
+        ## INV
+        self.upscale_block = nn.Sequential(
+            nn.Conv2d(n_feat, channel_in * (scale ** 2), 3, stride=1, padding=1), 
+            nn.PixelShuffle(upscale_factor=scale)
+        )
+
+        self.HR_conv = nn.Conv2d(channel_in, n_feat, 3, stride=1, padding=1)
+        self.downscale_block = nn.Conv2d(n_feat, n_feat, 3, stride=scale, padding=1)
+        ##INV
+        self.end_forward_conv = nn.Conv2d(n_feat, channel_out, 3, stride=1, padding=1)
+
+
+        self.inv_blocks = nn.ModuleList()
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        for i in range(block_num):
+            self.inv_blocks.append(InvBlockExp(subnet_constructor, n_feat, n_feat // 2))
+
+    def forward(self, x, rev=False):
+        out = x
+        if not rev:
+            out = self.HR_conv(out)
+            out = self.lrelu(out)
+            out = self.downscale_block(out)
+            for i in range(self.down_num):
+                out = self.inv_blocks[i](out)
+            out = self.end_forward_conv(out)
+            out = self.lrelu(out)
+        else:
+            out = self.LR_conv(out)
+            out = self.lrelu(out)
+            for i in reversed(range(self.down_num)):
+                out = self.inv_blocks[i](out)
+            out = self.upscale_block(out)
+        return out
