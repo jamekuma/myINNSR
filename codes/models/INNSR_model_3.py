@@ -111,10 +111,12 @@ class INNSRModel(BaseModel):
         sr_image = back_out[:, :3, :, :]
         ########## 正向loss
         # with torch.no_grad():
-        self.forw_out = self.INN(sr_image) # 正向推理
-        l_forw_fit = self.INN_loss_forward(self.forw_out, self.ref_L)
+        if self.train_opt['lambda_fit_forw'] != 0:
+            self.forw_out = self.INN(sr_image) # 正向推理
+            l_forw_fit = self.INN_loss_forward(self.forw_out, self.ref_L)
+        else:
+            l_forw_fit = torch.Tensor([0]).to(self.device)
 
-        zshape = self.forw_out[:, 3:, :, :].shape
 
         
 
